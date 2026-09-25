@@ -1,0 +1,20 @@
+{
+  "name": "مختبر المطبخ",
+  "short_name": "مختبر المطبخ",
+  "description": "لعبة طبخ للأطفال: امزج المكوّنات في الوعاء السحري واكتشف الأطباق والملصقات.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fff4e6",
+  "theme_color": "#ffe9d6",
+  "categories": ["games", "kids", "education"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
