@@ -174,7 +174,9 @@ export const Narrator = (() => {
     const job = queue.shift();
     const g = gen;
     active = { job, sources: [], timer: 0 };
-    await Promise.race([Clips.loaded, wait(1500)]);
+    // Wait for the clip list. Give up early only if the device has its own Arabic
+    // voice to use instead; many phones have none, and then waiting is the only option.
+    await Promise.race([Clips.loaded, wait(Voice.available ? 1500 : 8000)]);
     if (g !== gen || !active || active.job !== job) return;
     const ctx = Sound.ensure();
     if (ctx && Clips.ready && job.parts.every(Clips.has)) {

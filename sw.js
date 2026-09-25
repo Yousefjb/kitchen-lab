@@ -2,7 +2,9 @@
 // Network first (so updates arrive right away), falling back to the cached copy offline.
 // Requests always check with the server (cache: 'no-cache'), so the browser never mixes
 // an old copy of one code file with a new copy of another after an update.
-const CACHE = 'kitchen-lab-v5';
+// Voice clips are the exception: their file names are a hash of the words, so a cached
+// clip never goes stale and is played straight from the cache (no wait on a slow network).
+const CACHE = 'kitchen-lab-v6';
 // Every code, style and data file. tools/check-data.mjs tells you if one is missing.
 const ASSETS = [
   './',
@@ -65,18 +67,38 @@ self.addEventListener('activate', event => {
   );
 });
 
+// A slow network must not hold up the voice: after this long, use the cached copy.
+const SLOW_MS = 1000;
+
+function fromNetwork(req) {
+  return fetch(req, { cache: 'no-cache' }).then(res => {
+    if (res.ok) {
+      const copy = res.clone();
+      caches.open(CACHE).then(cache => cache.put(req, copy));
+    }
+    return res;
+  });
+}
+
 self.addEventListener('fetch', event => {
   const req = event.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
-  event.respondWith(
-    fetch(req, { cache: 'no-cache' })
-      .then(res => {
-        if (res.ok) {
-          const copy = res.clone();
-          caches.open(CACHE).then(cache => cache.put(req, copy));
-        }
-        return res;
-      })
-      .catch(() => caches.match(req).then(hit => hit || (req.mode === 'navigate' ? caches.match('./index.html') : undefined)))
-  );
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+  const offline = () => caches.match(req).then(hit => hit || (req.mode === 'navigate' ? caches.match('./index.html') : undefined));
+  if (/\/voice\/.+\.mp3$/.test(url.pathname)) {
+    event.respondWith(caches.match(req).then(hit => hit || fromNetwork(req)));
+    return;
+  }
+  if (url.pathname.endsWith('/voice/manifest.json')) {
+    event.respondWith((async () => {
+      const net = fromNetwork(req);
+      const cached = await caches.match(req);
+      if (!cached) return net;
+      net.catch(() => {});
+      const slow = new Promise(r => setTimeout(() => r(cached), SLOW_MS));
+      return Promise.race([net.catch(() => cached), slow]);
+    })());
+    return;
+  }
+  event.respondWith(fromNetwork(req).catch(offline));
 });
