@@ -26,6 +26,7 @@ Adding dishes, recipes or whole kitchens only touches `data/`.
 | `js/voice-lines.js` | The list of every spoken line (used by the game and the voice tool) |
 | `js/main.js` | The game itself: bowl, pantry, orders, album, parents' corner |
 | `js/stir.js` | Stirring the full bowl: the spoon gesture and the colour swirl |
+| `js/fry.js` | Frying after the stir: the pan, the golden meter and the timing |
 | `js/sound.js`, `js/fx.js`, `js/voice.js`, `js/util.js` | Sound effects, particles, narration, small helpers |
 | `sw.js` | Offline cache (service worker) |
 | `manifest.webmanifest`, `icons/` | App install info and icons |
@@ -194,6 +195,7 @@ A new starting ingredient goes under `base` and in the kitchen's `start` list, o
 | `start` | Starting ingredients |
 | `unlocks` | Gift ingredients and how many discoveries each one needs |
 | `firstOrder` | The very first customer order (an easy one) |
+| `cook` | Dishes that are cooked after stirring, by how: `{ fry: ['friedegg', 'fries'] }`. The child lifts the pan when it turns golden. Dishes not listed appear straight away. Only `fry` exists so far. |
 | `text` | Welcome, welcome back, and "you found everything" lines (spoken) |
 | `tiers` | Album pages: a label and the items on it, grouped by kind |
 | `overrides` | This kitchen's own wording for a shared item, e.g. the bakery calls `heat` «شعلة سحرية» |

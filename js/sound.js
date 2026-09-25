@@ -218,6 +218,27 @@ export const Sound = (() => {
       tone({ type: 'sine', f, f2: f * 1.6, dur: .07, vol: .1 });
     }),
     ovenDing: () => play(() => bell(1318.5, 0, .26)),
+    // Frying: crackles that get busier as the pan heats up (p goes 0 → 1).
+    sizzle: (p = 0) => play(() => {
+      noise({ dur: .3, vol: .03 + p * .04, type: 'highpass', f: 4500, attack: .04 });
+      const n = 2 + Math.round(p * 5);
+      for (let i = 0; i < n; i++) noise({ t: rnd(0, .24), dur: rnd(.012, .03), vol: rnd(.08, .18), type: 'highpass', f: rnd(2500, 6000) });
+    }),
+    // The dish has turned golden: now is the moment.
+    ready: () => play(() => {
+      bell(1568, 0, .16);
+      bell(2093, .12, .14);
+    }),
+    // Burnt: a puff of smoke.
+    poof: () => play(() => {
+      noise({ dur: .55, vol: .34, type: 'lowpass', f: 1600, f2: 180, attack: .02 });
+      tone({ type: 'sine', f: 220, f2: 70, dur: .35, vol: .3 });
+    }),
+    // Lifting the pan: a quick whoosh up.
+    lift: () => play(() => {
+      noise({ dur: .28, vol: .16, type: 'bandpass', f: 500, f2: 2600, q: 1.5, attack: .05 });
+      tone({ type: 'sine', f: 420, f2: 980, dur: .2, vol: .2 });
+    }),
     magic: () => play(() => {
       [1046.5, 1318.5, 1568, 2093, 2637].forEach((f, i) => {
         tone({ type: 'triangle', f, t: i * .075, dur: .42, vol: .18, dest: echoIn });

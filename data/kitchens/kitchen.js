@@ -18,6 +18,11 @@ export default {
   ],
   firstOrder: 'friedegg',
 
+  // Dishes that are cooked after stirring: the child lifts the pan when it's golden.
+  cook: {
+    fry: ['friedegg', 'fries', 'pancakes'],
+  },
+
   text: {
     welcome: 'أهلًا بك في مختبر المطبخ! أنا طبّوخ. هيّا نطبخ معًا!',
     back: 'أهلًا بعودتك يا طبّاخنا الصغير! هيّا نطبخ!',

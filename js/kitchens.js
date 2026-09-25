@@ -5,6 +5,8 @@ import { KITCHEN_DEFS } from '../data/kitchens/index.js';
 import { createCookbook } from './recipes.js';
 
 export const KINDS = ['base', 'basic', 'dough', 'treat', 'dish', 'meal', 'mishap', 'wacky', 'legendary'];
+// Ways a dish can be cooked after stirring (the kitchen's `cook` lists).
+export const COOK_METHODS = ['fry'];
 
 export function buildKitchen(def) {
   const items = {};
@@ -23,6 +25,7 @@ export function buildKitchen(def) {
     items,
     ids,
     starters: ids.filter(id => items[id].kind === 'base'),
+    cookOf: Object.fromEntries(Object.entries(def.cook || {}).flatMap(([how, list]) => list.map(id => [id, how]))),
     cookbook: createCookbook(def.recipes),
   };
 }
@@ -46,6 +49,18 @@ export function checkKitchen(k) {
   }
   for (const id of k.ids) {
     for (const f of ['name', 'emoji', 'color', 'desc']) if (!k.items[id][f]) problems.push(`"${id}" has no ${f}`);
+  }
+
+  const cooked = new Set();
+  for (const [how, list] of Object.entries(k.cook || {})) {
+    if (!COOK_METHODS.includes(how)) problems.push(`cook: unknown way to cook "${how}" (known: ${COOK_METHODS.join(', ')})`);
+    for (const id of list) {
+      if (!k.items[id]) problems.push(`cook.${how}: "${id}" is not in this kitchen's tiers`);
+      else if (k.items[id].kind === 'mishap') problems.push(`cook.${how}: "${id}" is a mishap; mishaps happen straight away`);
+      else if (!k.cookbook.makersOf(id).length) problems.push(`cook.${how}: "${id}" is never made in the bowl, so it's never cooked`);
+      if (cooked.has(id)) problems.push(`cook: "${id}" is listed more than once`);
+      cooked.add(id);
+    }
   }
 
   const results = new Map();

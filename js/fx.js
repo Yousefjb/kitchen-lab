@@ -133,8 +133,8 @@ export const FX = (() => {
       });
       ring(8, () => spawn({ type: 'smoke', x: x + rnd(-30, 30), y, vx: rnd(-40, 40), vy: rnd(-90, -30), g: -20, drag: .97, life: rnd(.9, 1.4), size: rnd(10, 18), grow: 34, color: '#a8998c' }));
     },
-    puff(x, y) {
-      ring(12, a => spawn({ type: 'smoke', x: x + Math.cos(a) * 30, y: y + Math.sin(a) * 10, vx: Math.cos(a) * rnd(20, 70), vy: rnd(-80, -20), g: -20, drag: .97, life: rnd(.8, 1.3), size: rnd(10, 18), grow: 38, color: '#bba99a' }));
+    puff(x, y, color = '#bba99a') {
+      ring(12, a => spawn({ type: 'smoke', x: x + Math.cos(a) * 30, y: y + Math.sin(a) * 10, vx: Math.cos(a) * rnd(20, 70), vy: rnd(-80, -20), g: -20, drag: .97, life: rnd(.8, 1.3), size: rnd(10, 18), grow: 38, color }));
     },
     mini(x, y) {
       ring(14, a => {

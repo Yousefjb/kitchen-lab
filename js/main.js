@@ -8,6 +8,7 @@ import { $, el, fillEmo, wait, clamp, pick, reducedMotion, landscapeMQ, num, for
 import { Sound } from './sound.js';
 import { FX } from './fx.js';
 import { createStirrer } from './stir.js';
+import { createFryer } from './fry.js';
 import { Voice, Clips, Narrator } from './voice.js';
 
 const PREFS_KEY = 'kitchenLab.prefs.v1';
@@ -89,7 +90,7 @@ const state = {
   order: [],
   unseen: new Set(),
   settings: { sfx: true, music: false, voice: true },
-  stats: { mixes: 0, mishaps: 0 },
+  stats: { mixes: 0, mishaps: 0, fried: 0 },
   stars: 0,
   served: 0,
   albumSeen: 0,
@@ -110,7 +111,7 @@ function resetState() {
   state.discovered = new Set();
   state.order = [];
   state.unseen = new Set();
-  state.stats = { mixes: 0, mishaps: 0 };
+  state.stats = { mixes: 0, mishaps: 0, fried: 0 };
   state.stars = 0;
   state.served = 0;
   state.completed = false;
@@ -130,7 +131,7 @@ function loadState() {
   }
   if (Array.isArray(d.unseen)) d.unseen.forEach(id => { if (state.discovered.has(id)) state.unseen.add(id); });
   if (d.stats && typeof d.stats === 'object') {
-    for (const k of ['mixes', 'mishaps']) {
+    for (const k of ['mixes', 'mishaps', 'fried']) {
       const v = Number(d.stats[k]);
       if (Number.isFinite(v) && v >= 0) state.stats[k] = Math.floor(v);
     }
@@ -785,6 +786,58 @@ function dismissStirHint() {
 }
 
 /* =====================================================================
+   Frying: dishes in the kitchen's cook.fry list go into the pan after stirring
+   ===================================================================== */
+const FRY_TEXT = 'عندما يصير ذهبيًّا ⭐ اضغط على المقلاة!';
+const fryPan = $('#fryPan');
+const fryer = createFryer({ root: $('#fry'), paused: () => !!topModal() || document.hidden, on: onFryEvent });
+let fryHelped = false;
+
+function panCenter() {
+  const r = fryPan.getBoundingClientRect();
+  return { x: r.left + r.width * .617, y: r.top + r.height * .5 };
+}
+
+function onFryEvent(type, info) {
+  if (type === 'sizzle') {
+    Sound.sizzle(info);
+  } else if (type === 'ready') {
+    Sound.ready();
+    // Say "now!" while they are learning, and whenever the last try burnt.
+    if (state.stats.fried < 3 || info.attempt > 1) say('الآن! ارفع المقلاة! ⬆', { speech: PHRASES.fryNow });
+  } else if (type === 'overdone') {
+    setCaption(FRY_TEXT); // the "now!" moment has passed
+  } else if (type === 'early') {
+    Sound.boing();
+    say('لم ينضج بعد! انتظر قليلًا. ⏳', { speech: PHRASES.fryEarly });
+  } else if (type === 'burnt') {
+    Sound.poof();
+    const c = panCenter();
+    FX.puff(c.x, c.y, '#6e625a');
+    setFace('dizzy', 1600);
+    say('أوه! احترق قليلًا. لنجرّب مرّة أخرى! 💨', { speech: PHRASES.fryBurnt });
+  } else if (type === 'help') {
+    fryHelped = true; // spoken with the result, so the reveal doesn't cut it off
+  } else if (type === 'lift') {
+    Sound.lift();
+    station.classList.remove('frying'); // the mascot comes back as the pan lifts away
+  }
+}
+
+// Resolves true once the dish is lifted out of the pan, false if cancelled.
+async function fry(id) {
+  fryHelped = false;
+  station.classList.add('frying');
+  setFace('wow');
+  if (state.stats.fried < 3) say(FRY_TEXT, { speech: PHRASES.fry });
+  else setCaption(FRY_TEXT);
+  const ok = await fryer.run({ id, emoji: ITEMS[id].emoji });
+  station.classList.remove('frying');
+  if (ok) state.stats.fried++;
+  return ok;
+}
+
+/* =====================================================================
    Mixing & discovery
    ===================================================================== */
 let resultToken = 0;
@@ -809,14 +862,17 @@ async function mix({ stirred = false } = {}) {
     state.stats.mixes++;
     station.classList.remove('cooking');
     clearBowl();
-    const c = bowlCenter();
 
     if (!res) {
-      failReaction(c);
+      failReaction(bowlCenter());
       save();
       return;
     }
 
+    const cooked = MODE.cookOf[res];
+    if (cooked === 'fry' && !(await fry(res))) return;
+    const lead = cooked ? [fryHelped ? PHRASES.fryHelp : PHRASES.fryDone] : [];
+    const c = bowlCenter();
     const item = ITEMS[res];
     const isNew = !state.discovered.has(res);
     const orderHit = res === state.orderTarget;
@@ -837,7 +893,7 @@ async function mix({ stirred = false } = {}) {
         setTimeout(() => Sound.magic(), 140);
         FX.sparkle(c.x, c.y, item.emoji);
         setFace('happy', 2200);
-        speakOut([PHRASES.newFind, item.name, item.desc]);
+        speakOut([...lead, PHRASES.newFind, item.name, item.desc]);
       }
       discover(res);
       toastDiscovery(res);
@@ -845,7 +901,7 @@ async function mix({ stirred = false } = {}) {
     } else {
       FX.mini(c.x, c.y);
       setFace('happy', 1500);
-      speakOut([item.name, PHRASES.again]);
+      speakOut([...lead, item.name, PHRASES.again]);
       setTimeout(() => { if (token === resultToken) hideResult(); }, 1300);
     }
     if (orderHit) setTimeout(() => serveOrder(res), isNew ? 1500 : 700);
@@ -1651,9 +1707,10 @@ function recover(err) {
   try {
     cancelDrag();
     document.querySelectorAll('.ghost').forEach(g => g.remove());
-    station.classList.remove('cooking', 'after-stir');
+    station.classList.remove('cooking', 'after-stir', 'frying');
     endStir();
     stirrer.cancel();
+    fryer.cancel();
     state.busy = false;
     state.mixing = false;
     state.pending = 0;
