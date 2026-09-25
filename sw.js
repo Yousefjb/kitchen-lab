@@ -4,7 +4,7 @@
 // an old copy of one code file with a new copy of another after an update.
 // Voice clips are the exception: their file names are a hash of the words, so a cached
 // clip never goes stale and is played straight from the cache (no wait on a slow network).
-const CACHE = 'kitchen-lab-v7';
+const CACHE = 'kitchen-lab-v8';
 // Every code, style and data file. tools/check-data.mjs tells you if one is missing.
 const ASSETS = [
   './',
@@ -19,7 +19,7 @@ const ASSETS = [
   './js/sound.js',
   './js/fx.js',
   './js/stir.js',
-  './js/fry.js',
+  './js/cook.js',
   './js/voice.js',
   './data/items.js',
   './data/customers.js',

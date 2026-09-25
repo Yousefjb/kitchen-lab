@@ -224,7 +224,35 @@ export const Sound = (() => {
       const n = 2 + Math.round(p * 5);
       for (let i = 0; i < n; i++) noise({ t: rnd(0, .24), dur: rnd(.012, .03), vol: rnd(.08, .18), type: 'highpass', f: rnd(2500, 6000) });
     }),
-    // The dish has turned golden: now is the moment.
+    // Boiling: bloops that come faster and bigger as the water heats up.
+    bubble: (p = 0) => play(() => {
+      const n = 1 + Math.round(p * 3);
+      for (let i = 0; i < n; i++) {
+        const f = rnd(160, 260) + p * 120;
+        tone({ type: 'sine', f, f2: f * 2.2, t: rnd(0, .22), dur: rnd(.05, .09), vol: .07 + p * .06 });
+      }
+      noise({ dur: .28, vol: .015 + p * .03, type: 'bandpass', f: 900, q: .8, attack: .08 });
+    }),
+    // Baking: the oven timer ticks; a soft warm hum under it.
+    ovenTick: (p = 0) => play(() => {
+      tone({ type: 'square', f: 2400, dur: .018, vol: .035, filter: { type: 'highpass', f: 1500 } });
+      noise({ dur: .3, vol: .012 + p * .012, type: 'lowpass', f: 260, attack: .1 });
+    }),
+    // Melting: slow, thick blups and a faint sizzle.
+    simmer: (p = 0) => play(() => {
+      if (Math.random() < .45 + p * .4) {
+        const f = rnd(110, 170);
+        tone({ type: 'sine', f, f2: f * 1.8, t: rnd(0, .15), dur: .12, vol: .1 });
+      }
+      noise({ dur: .3, vol: .012 + p * .02, type: 'highpass', f: 5000, attack: .05 });
+    }),
+    // Boiled over: a big hiss and a splash.
+    boilOver: () => play(() => {
+      noise({ dur: .9, vol: .3, type: 'highpass', f: 2500, f2: 900, attack: .03 });
+      noise({ t: .05, dur: .35, vol: .3, type: 'lowpass', f: 1200, f2: 250 });
+      [0, .08, .16].forEach(t => tone({ type: 'sine', f: rnd(300, 420), f2: 900, t, dur: .08, vol: .12 }));
+    }),
+    // The dish is ready: now is the moment.
     ready: () => play(() => {
       bell(1568, 0, .16);
       bell(2093, .12, .14);

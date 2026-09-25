@@ -3,10 +3,11 @@
 import { ITEMS as CATALOG } from '../data/items.js';
 import { KITCHEN_DEFS } from '../data/kitchens/index.js';
 import { createCookbook } from './recipes.js';
+import { COOK_LINES } from '../data/phrases.js';
 
 export const KINDS = ['base', 'basic', 'dough', 'treat', 'dish', 'meal', 'mishap', 'wacky', 'legendary'];
 // Ways a dish can be cooked after stirring (the kitchen's `cook` lists).
-export const COOK_METHODS = ['fry'];
+export const COOK_METHODS = Object.keys(COOK_LINES);
 
 export function buildKitchen(def) {
   const items = {};

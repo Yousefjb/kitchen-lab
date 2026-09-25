@@ -1,7 +1,7 @@
 // Every line the game can say out loud. tools/make-voice.mjs imports this to
 // know which voice clips to make, and the game uses it to match text to clips.
 import { KITCHENS } from './kitchens.js';
-import { PHRASES, FAIL_REACTIONS } from '../data/phrases.js';
+import { PHRASES, FAIL_REACTIONS, COOK_LINES } from '../data/phrases.js';
 import { CUSTOMERS } from '../data/customers.js';
 
 // "Bear wants" / "Bunny wants": the start of a customer's order.
@@ -24,5 +24,6 @@ export function voiceParts() {
   }
   CUSTOMERS.forEach(c => out.add(customerAsk(c)));
   FAIL_REACTIONS.forEach(r => out.add(r.text));
+  for (const l of Object.values(COOK_LINES)) [l.go, l.now, l.spoilt, l.done].forEach(t => out.add(t));
   return [...new Set([...out].map(speakable).filter(Boolean))];
 }

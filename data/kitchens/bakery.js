@@ -13,6 +13,14 @@ export default {
   unlocks: [],
   firstOrder: 'cream',
 
+  // Dishes that are cooked after stirring, and how (see "cook" in README.md).
+  cook: {
+    fry:  ['pancake'],
+    boil: ['hotmilk'],
+    bake: ['cookie', 'bread', 'cake', 'bdaycake'],
+    melt: ['caramel', 'custard'],
+  },
+
   text: {
     welcome: 'أهلًا بك في المخبز العجيب! أنا طبّوخ. هيّا نخبز معًا!',
     back: 'أهلًا بعودتك إلى المخبز! هيّا نخبز!',

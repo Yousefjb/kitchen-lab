@@ -152,14 +152,15 @@
         <div class="stove" aria-hidden="true">
           <div class="flames"><i class="flame"></i><i class="flame"></i><i class="flame"></i></div>
         </div>
-        <!-- frying (js/fry.js): tap the pan while the needle is on the star -->
-        <div class="fry" id="fry" hidden>
-          <div class="fry-meter" aria-hidden="true">
-            <span class="fry-star emo">⭐</span>
-            <i class="fry-needle"></i>
+        <!-- cooking after the stir (js/cook.js): tap the pan, pot or oven while the needle is on the star.
+             data-how on #cook shows one vessel; the *-front drawings sit in front of the food. -->
+        <div class="cook" id="cook" hidden>
+          <div class="cook-meter" aria-hidden="true">
+            <span class="cook-star emo">⭐</span>
+            <i class="cook-needle"></i>
           </div>
-          <button class="fry-pan" id="fryPan" aria-label="ارفع المقلاة">
-            <svg class="fry-svg" viewBox="0 0 300 150" aria-hidden="true">
+          <button class="cook-btn" id="cookBtn">
+            <svg class="vessel v-fry" viewBox="0 0 300 150" aria-hidden="true">
               <ellipse cx="185" cy="136" rx="96" ry="10" fill="#4a2c1d" opacity=".14"/>
               <rect x="6" y="62" width="92" height="20" rx="10" fill="#a86b3c"/>
               <rect x="14" y="67" width="66" height="6" rx="3" fill="#d9a06b" opacity=".7"/>
@@ -167,13 +168,93 @@
               <ellipse cx="185" cy="92" rx="110" ry="44" fill="#2b2b33"/>
               <ellipse cx="185" cy="78" rx="110" ry="44" fill="#474752"/>
               <ellipse cx="185" cy="80" rx="94" ry="35" fill="#5d5d6a"/>
-              <ellipse class="fry-oil" cx="185" cy="82" rx="80" ry="27"/>
+              <ellipse class="cook-oil" cx="185" cy="82" rx="80" ry="27"/>
               <path d="M112 70 Q140 52 182 50" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity=".22"/>
             </svg>
-            <span class="fry-food emo"></span>
-            <span class="fry-sizzle" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-            <span class="fry-smoke" aria-hidden="true"><i></i><i></i><i></i></span>
-            <span class="fry-label">ارفع المقلاة ⬆</span>
+            <svg class="vessel v-boil" viewBox="0 0 300 170" aria-hidden="true">
+              <ellipse cx="150" cy="162" rx="100" ry="8" fill="#4a2c1d" opacity=".14"/>
+              <rect x="24" y="66" width="42" height="16" rx="8" fill="#b8403a"/>
+              <rect x="234" y="66" width="42" height="16" rx="8" fill="#b8403a"/>
+              <ellipse cx="150" cy="60" rx="100" ry="26" fill="#f07a70"/>
+              <ellipse cx="150" cy="62" rx="90" ry="21" fill="#7a2b2b"/>
+              <ellipse class="cook-liquid" cx="150" cy="66" rx="86" ry="18"/>
+            </svg>
+            <svg class="vessel v-bake" viewBox="0 0 220 200" aria-hidden="true">
+              <defs>
+                <radialGradient id="gOvenGlow" cx=".5" cy=".75" r=".75">
+                  <stop offset="0" stop-color="#ffd36b"/>
+                  <stop offset=".55" stop-color="#ff8a3d"/>
+                  <stop offset="1" stop-color="#ff8a3d" stop-opacity="0"/>
+                </radialGradient>
+              </defs>
+              <ellipse cx="110" cy="194" rx="92" ry="6" fill="#4a2c1d" opacity=".14"/>
+              <rect x="24" y="178" width="20" height="14" rx="5" fill="#8a5a3a"/>
+              <rect x="176" y="178" width="20" height="14" rx="5" fill="#8a5a3a"/>
+              <rect x="8" y="8" width="204" height="178" rx="24" fill="#ffd9b8"/>
+              <path d="M8 50 V32 A24 24 0 0 1 32 8 H188 A24 24 0 0 1 212 32 V50 Z" fill="#ffc08f"/>
+              <circle cx="42" cy="29" r="10" fill="#fff" stroke="#e39a63" stroke-width="3"/>
+              <path d="M42 21 v8" stroke="#8a5a3a" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="76" cy="29" r="10" fill="#fff" stroke="#e39a63" stroke-width="3"/>
+              <path d="M76 21 v8" stroke="#8a5a3a" stroke-width="3" stroke-linecap="round"/>
+              <rect x="118" y="19" width="74" height="20" rx="7" fill="#4a2c1d"/>
+              <circle class="cook-lamp" cx="133" cy="29" r="4.5"/>
+              <rect x="146" y="26" width="36" height="6" rx="3" fill="#ffcf3f" opacity=".75"/>
+              <rect x="28" y="60" width="164" height="104" rx="20" fill="#eaa877"/>
+              <rect x="40" y="70" width="140" height="80" rx="13" fill="#3a2622"/>
+              <rect class="cook-glow" x="40" y="70" width="140" height="80" rx="13" fill="url(#gOvenGlow)"/>
+              <rect x="50" y="134" width="120" height="4" rx="2" fill="#6e4a3a"/>
+              <rect x="64" y="166" width="92" height="10" rx="5" fill="#c9824e"/>
+            </svg>
+            <svg class="vessel v-melt" viewBox="0 0 300 150" aria-hidden="true">
+              <ellipse cx="180" cy="140" rx="86" ry="8" fill="#4a2c1d" opacity=".14"/>
+              <rect x="6" y="54" width="100" height="17" rx="8.5" fill="#a86b3c"/>
+              <rect x="14" y="59" width="72" height="5" rx="2.5" fill="#d9a06b" opacity=".7"/>
+              <ellipse cx="180" cy="60" rx="90" ry="22" fill="#8fd6cc"/>
+              <ellipse cx="180" cy="62" rx="81" ry="18" fill="#2f5f5a"/>
+              <ellipse class="cook-liquid" cx="180" cy="65" rx="77" ry="15"/>
+            </svg>
+            <span class="cook-food emo" id="cookFood"></span>
+            <svg class="vessel-front v-boil" viewBox="0 0 300 170" aria-hidden="true">
+              <defs>
+                <linearGradient id="gPot" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#ff8f80"/>
+                  <stop offset="1" stop-color="#d9534a"/>
+                </linearGradient>
+              </defs>
+              <path d="M50 60 L60 138 Q63 156 84 156 L216 156 Q237 156 240 138 L250 60 A100 26 0 0 1 50 60 Z" fill="url(#gPot)"/>
+              <path d="M50 60 A100 26 0 0 0 250 60" stroke="#ffb3aa" stroke-width="6" fill="none"/>
+              <path d="M72 94 Q76 128 94 146" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" opacity=".35"/>
+              <g fill="#fff" opacity=".5"><circle cx="150" cy="120" r="6"/><circle cx="118" cy="128" r="4"/><circle cx="182" cy="128" r="4"/></g>
+              <!-- boiling over: foam climbs out past the star, and drips down the pot when it goes too far -->
+              <g class="cook-foam" fill="#fff" stroke="#c9d6e2" stroke-width="2.5">
+                <g class="foam-drips">
+                  <path d="M58 64 v34 a9 9 0 0 0 18 0 v-34 Z"/>
+                  <path d="M112 76 v46 a9 9 0 0 0 18 0 v-46 Z"/>
+                  <path d="M178 78 v30 a9 9 0 0 0 18 0 v-30 Z"/>
+                  <path d="M226 66 v40 a9 9 0 0 0 18 0 v-40 Z"/>
+                </g>
+                <circle cx="62" cy="58" r="17"/><circle cx="238" cy="58" r="17"/>
+                <circle cx="92" cy="50" r="21"/><circle cx="208" cy="50" r="21"/>
+                <circle cx="124" cy="44" r="23"/><circle cx="176" cy="44" r="23"/>
+                <circle cx="150" cy="40" r="24"/>
+                <circle cx="100" cy="72" r="18"/><circle cx="150" cy="78" r="20"/><circle cx="200" cy="72" r="18"/>
+                <g fill="#fff" stroke="none"><circle cx="150" cy="60" r="34"/><circle cx="110" cy="62" r="22"/><circle cx="190" cy="62" r="22"/></g>
+              </g>
+            </svg>
+            <svg class="vessel-front v-melt" viewBox="0 0 300 150" aria-hidden="true">
+              <defs>
+                <linearGradient id="gSaucepan" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#9fe3d9"/>
+                  <stop offset="1" stop-color="#4fb3a6"/>
+                </linearGradient>
+              </defs>
+              <path d="M90 60 L97 114 Q100 130 118 130 L242 130 Q260 130 263 114 L270 60 A90 22 0 0 1 90 60 Z" fill="url(#gSaucepan)"/>
+              <path d="M90 60 A90 22 0 0 0 270 60" stroke="#d2f5ef" stroke-width="5" fill="none"/>
+              <path d="M110 80 Q112 106 126 120" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity=".35"/>
+            </svg>
+            <span class="cook-bits" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            <span class="cook-smoke" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="cook-label"></span>
           </button>
         </div>
         <div class="result-pop" id="resultPop" hidden aria-hidden="true">

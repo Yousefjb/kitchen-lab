@@ -18,9 +18,12 @@ export default {
   ],
   firstOrder: 'friedegg',
 
-  // Dishes that are cooked after stirring: the child lifts the pan when it's golden.
+  // Dishes that are cooked after stirring, and how (see "cook" in README.md).
   cook: {
-    fry: ['friedegg', 'fries', 'pancakes'],
+    fry:  ['friedegg', 'fries', 'pancakes'],
+    boil: ['boiling', 'noodles', 'soup', 'cheese'],
+    bake: ['bread', 'bakedpotato'],
+    melt: ['sauce', 'fondue'],
   },
 
   text: {

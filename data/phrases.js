@@ -16,14 +16,50 @@ export const PHRASES = {
   fiveStars: 'رائع! جمعت خمس نجوم جديدة!',
   nudge: 'اضغط عليّ إذا احتجت مساعدة!',
   stir: 'هيّا نخلط! حرّك الملعقة في دوائر.',
-  fry: 'هيّا نقلي! عندما يصير ذهبيًّا، ارفع المقلاة.',
-  fryNow: 'الآن! ارفع المقلاة!',
-  fryEarly: 'لم ينضج بعد! انتظر قليلًا.',
-  fryBurnt: 'أوه! احترق قليلًا. لنجرّب مرّة أخرى!',
-  fryHelp: 'سأساعدك هذه المرّة!',
-  fryDone: 'ممتاز! ذهبيّ تمامًا!',
+  cookEarly: 'ليس بعد! انتظر قليلًا.',
+  cookHelp: 'سأساعدك هذه المرّة!',
   locked: 'ملصق مخفي! اكتشفه في الوعاء.',
   test: 'مرحبًا! أنا طبّوخ. هيّا نطبخ معًا!',
+};
+
+// Cooking after the stir (js/cook.js), one set of lines per way of cooking.
+// A kitchen's `cook` lists say which dishes are cooked which way.
+//   go       said the first few times: what to do       caption  the same, shown in the bubble
+//   label    written on the pan, pot or oven (tap it)   now      said when it's ready
+//   spoilt   too late: burnt, or boiled over            done     taken out on time
+export const COOK_LINES = {
+  fry: {
+    go: 'هيّا نقلي! عندما يصير ذهبيًّا، ارفع المقلاة.',
+    caption: 'عندما يصير ذهبيًّا ⭐ اضغط على المقلاة!',
+    label: 'ارفع المقلاة',
+    now: 'الآن! ارفع المقلاة!',
+    spoilt: 'أوه! احترق قليلًا. لنجرّب مرّة أخرى!',
+    done: 'ممتاز! ذهبيّ تمامًا!',
+  },
+  boil: {
+    go: 'هيّا نغلي! عندما تكبر الفقاعات، ارفع القِدر.',
+    caption: 'عندما تكبر الفقاعات ⭐ اضغط على القِدر!',
+    label: 'ارفع القِدر',
+    now: 'الآن! ارفع القِدر!',
+    spoilt: 'أوه! فار القِدر! لنجرّب مرّة أخرى!',
+    done: 'ممتاز! في الوقت المناسب تمامًا!',
+  },
+  bake: {
+    go: 'هيّا نخبز! عندما يصير ذهبيًّا، أخرجه من الفرن.',
+    caption: 'عندما يصير ذهبيًّا ⭐ اضغط على الفرن!',
+    label: 'أخرجه من الفرن',
+    now: 'الآن! أخرجه من الفرن!',
+    spoilt: 'أوه! احترق قليلًا. لنجرّب مرّة أخرى!',
+    done: 'ممتاز! ذهبيّ تمامًا!',
+  },
+  melt: {
+    go: 'هيّا نسخّنه على نار هادئة! عندما يصير ناعمًا، ارفع القِدر.',
+    caption: 'عندما يصير ناعمًا ⭐ اضغط على القِدر!',
+    label: 'ارفع القِدر',
+    now: 'الآن! ارفع القِدر!',
+    spoilt: 'أوه! احترق قليلًا. لنجرّب مرّة أخرى!',
+    done: 'ممتاز! ناعم تمامًا!',
+  },
 };
 
 // "No such thing as a wrong mix": silly bowl reactions.
