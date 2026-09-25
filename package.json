@@ -1,0 +1,9 @@
+{
+  "name": "kitchen-lab",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8765",
+    "check": "node tools/check-data.mjs"
+  }
+}

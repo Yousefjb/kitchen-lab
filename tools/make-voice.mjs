@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Makes natural Arabic voice clips for The Kitchen Lab with ElevenLabs.
 //
-// The game lists every line it can say (the VOICE-SCRIPT block in index.html).
+// The game lists every line it can say (voiceParts() in js/voice-lines.js).
 // This script turns each line into a small MP3 in voice/ar/ and records them in
 // voice/manifest.json. The game plays those files and only falls back to the
 // device's robotic voice for a line that has no clip yet.
@@ -29,6 +29,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { voiceParts } from '../js/voice-lines.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const VOICE_DIR = path.join(ROOT, 'voice');
@@ -89,14 +90,8 @@ async function apiJson(pathname, opts) {
   return JSON.parse(text);
 }
 
-// Every line the game can speak, read straight from index.html.
-function loadLines() {
-  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  const a = html.indexOf('/* VOICE-SCRIPT:BEGIN');
-  const b = html.indexOf('/* VOICE-SCRIPT:END */');
-  if (a < 0 || b < 0) fail('Could not find the VOICE-SCRIPT block in index.html.');
-  return new Function(html.slice(a, b) + '\nreturn voiceParts();')();
-}
+// Every line the game can speak, from the game's own data.
+const loadLines = voiceParts;
 
 function readManifest() {
   try {
