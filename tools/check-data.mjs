@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { KITCHENS, checkKitchen } from '../js/kitchens.js';
-import { voiceParts } from '../js/voice-lines.js';
+import { voiceParts, castParts } from '../js/voice-lines.js';
 import { ITEMS } from '../data/items.js';
 import { CUSTOMERS } from '../data/customers.js';
 
@@ -43,8 +43,19 @@ if (noPrompt.length) warnings.push(`no prompt in tools/image-prompts.json: ${noP
 // Voice clips.
 let clips = {};
 try { clips = JSON.parse(read('voice/manifest.json')).clips || {}; } catch { /* none yet */ }
-const unvoiced = voiceParts().filter(t => !clips[t] || !exists(`voice/${clips[t]}`));
-if (unvoiced.length) warnings.push(`${unvoiced.length} line(s) have no voice clip. Run: node tools/make-voice.mjs make --yes`);
+const unvoiced = [...voiceParts(), ...castParts()].filter(t => !clips[t] || !exists(`voice/${clips[t]}`));
+if (unvoiced.length) warnings.push(`${unvoiced.length} line(s) have no voice clip. Run: node tools/make-voice.mjs plan`);
+
+// Silly sounds: every stand-in in js/sound.js should have a prompt, and the other way round.
+const sfx = JSON.parse(read('tools/sfx-prompts.json')).sounds;
+const silly = read('js/sound.js').slice(read('js/sound.js').indexOf('const SYNTH'), read('js/sound.js').indexOf('// --- recorded clips'));
+const standIns = [...silly.matchAll(/^    (\w+): \(\) =>/gm)].map(m => m[1]);
+standIns.filter(n => !sfx[n]).forEach(n => warnings.push(`silly sound "${n}" has no prompt in tools/sfx-prompts.json`));
+Object.keys(sfx).filter(n => !standIns.includes(n)).forEach(n => errors.push(`tools/sfx-prompts.json: "${n}" has no stand-in in js/sound.js (SYNTH)`));
+let sounds = {};
+try { sounds = JSON.parse(read('sfx/manifest.json')).sounds || {}; } catch { /* none yet */ }
+const noSfx = Object.keys(sfx).filter(n => !sounds[n] || !exists(`sfx/${sounds[n]}`));
+if (noSfx.length) warnings.push(`${noSfx.length} silly sound(s) not recorded yet (a stand-in plays). Run: node tools/make-sfx.mjs plan`);
 
 // Offline cache: every code, style and data file must be listed in sw.js.
 const sw = read('sw.js');

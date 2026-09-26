@@ -43,7 +43,7 @@
 
   <main class="station" id="station">
     <div class="order" id="order" hidden>
-      <span class="order-cust emo" id="orderCust" aria-hidden="true">🐻</span>
+      <button class="order-cust emo" id="orderCust" aria-label="دغدغ الزبون">🐻</button>
       <button class="order-bubble" id="orderBubble">
         <span class="order-who" id="orderWho"></span>
         <span class="order-want"><span class="emo" id="orderEmo"></span><span id="orderName"></span></span>
@@ -113,6 +113,16 @@
             <path d="M40 104 C44 140 64 168 92 184" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" opacity=".45"/>
             <g class="cheeks" fill="#ff4f86" opacity=".32">
               <ellipse cx="80" cy="154" rx="11" ry="6.5"/><ellipse cx="180" cy="154" rx="11" ry="6.5"/>
+            </g>
+            <!-- after a burn (js/gags.js): soot on the face and frizzy hair on the rim -->
+            <g class="soot" fill="#3b3330">
+              <ellipse cx="78" cy="126" rx="22" ry="13" opacity=".7"/><ellipse cx="184" cy="150" rx="20" ry="12" opacity=".65"/>
+              <ellipse cx="136" cy="182" rx="26" ry="9" opacity=".55"/><circle cx="58" cy="160" r="7" opacity=".6"/>
+              <circle cx="206" cy="118" r="8" opacity=".6"/><circle cx="118" cy="118" r="5" opacity=".5"/>
+            </g>
+            <g class="frizz" stroke="#3b3330" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M44 66 l-6 -20 l12 8 l-2 -22 l12 16 l2 -20 l10 18"/>
+              <path d="M188 58 l4 -20 l8 14 l6 -22 l6 18 l10 -16 l0 22"/>
             </g>
             <g class="f f-idle" fill="#4a2c1d">
               <g class="eyes">
@@ -276,6 +286,7 @@
   </section>
 </div>
 
+<div class="gags" id="gags"></div>
 <canvas id="fx" aria-hidden="true"></canvas>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
@@ -345,6 +356,7 @@
         <div class="setting"><span>🗣️ صوت الراوي</span><button class="switch" id="swVoice" role="switch" aria-checked="true" aria-label="صوت الراوي"></button></div>
         <div class="setting"><span>🔔 المؤثرات الصوتية</span><button class="switch" id="swSfx" role="switch" aria-checked="true" aria-label="المؤثرات الصوتية"></button></div>
         <div class="setting"><span>🎵 الموسيقى</span><button class="switch" id="swMusic" role="switch" aria-checked="false" aria-label="الموسيقى"></button></div>
+        <div class="setting"><span>💨 نكات الغازات<small>عند إيقافها يتجشّأ الجميع بدلًا منها</small></span><button class="switch" id="swToots" role="switch" aria-checked="true" aria-label="نكات الغازات"></button></div>
         <p class="voice-status" id="voiceStatus"></p>
         <button class="soft-btn" id="btnTestVoice">🔊 جرّب الصوت</button>
       </section>

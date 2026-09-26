@@ -1,15 +1,16 @@
 // The Kitchen Lab: the game itself (screens, bowl, pantry, orders, album, parents' corner).
 // Items and recipes live in data/, the recipe rules in js/recipes.js.
 import { KITCHENS, DEFAULT_KITCHEN, checkKitchen } from './kitchens.js';
-import { PHRASES, FAIL_REACTIONS, KIND_LABEL, COOK_LINES } from '../data/phrases.js';
+import { PHRASES, FAIL_REACTIONS, KIND_LABEL, COOK_LINES, GAG_LINES } from '../data/phrases.js';
 import { CUSTOMERS } from '../data/customers.js';
-import { customerAsk, voiceParts } from './voice-lines.js';
+import { customerAsk, voiceParts, speakable, splitCast, TAGGED } from './voice-lines.js';
 import { $, el, fillEmo, wait, clamp, pick, reducedMotion, landscapeMQ, num, forName, anim, mixColors, applyEmojiFallbacks } from './util.js';
 import { Sound } from './sound.js';
 import { FX } from './fx.js';
 import { createStirrer } from './stir.js';
 import { createCooker } from './cook.js';
 import { Voice, Clips, Narrator } from './voice.js';
+import { createGags, ONE_SHOT } from './gags.js';
 
 const PREFS_KEY = 'kitchenLab.prefs.v1';
 
@@ -89,7 +90,7 @@ const state = {
   discovered: new Set(),
   order: [],
   unseen: new Set(),
-  settings: { sfx: true, music: false, voice: true },
+  settings: { sfx: true, music: false, voice: true, toots: true },
   stats: { mixes: 0, mishaps: 0, fried: 0, boiled: 0, baked: 0, melted: 0 },
   stars: 0,
   served: 0,
@@ -105,6 +106,7 @@ const state = {
   hint: { key: null, level: 0, at: 0 },
   orderTarget: null,
   customer: null,
+  show: false, // a customer is eating: wait before the next mix
 };
 
 function resetState() {
@@ -164,7 +166,7 @@ function loadPrefs() {
   // First run after an upgrade: inherit audio settings from the old bakery save.
   const legacy = p ? null : Store.read(KITCHENS.bakery.storeKey);
   const s = p || (legacy && legacy.settings) || {};
-  for (const k of ['sfx', 'music', 'voice']) if (typeof s[k] === 'boolean') state.settings[k] = s[k];
+  for (const k of ['sfx', 'music', 'voice', 'toots']) if (typeof s[k] === 'boolean') state.settings[k] = s[k];
   state.mode = p && KITCHENS[p.mode] ? p.mode : DEFAULT_KITCHEN;
 }
 
@@ -204,6 +206,7 @@ const modeList = $('#modeList');
 const swVoice = $('#swVoice');
 const swSfx = $('#swSfx');
 const swMusic = $('#swMusic');
+const swToots = $('#swToots');
 const voiceStatus = $('#voiceStatus');
 const btnTestVoice = $('#btnTestVoice');
 const btnReset = $('#btnReset');
@@ -219,30 +222,70 @@ const starCount = $('#starCount');
 const orderSkip = $('#orderSkip');
 const startScreen = $('#startScreen');
 
+const gags = createGags({
+  station, bowlWrap, bowlSvg, orderCust,
+  layer: $('#gags'),
+  speak: (parts, opts) => speakOut(parts, opts),
+  setFace: (face, ms) => setFace(face, ms),
+  setCaption: (text, warn, ms) => setCaption(text, warn, ms),
+  bowlCenter: () => bowlCenter(),
+  dishFrom: () => {
+    const r = (resultPop.hidden ? orderEmo : resultEmo).getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  },
+  toots: () => state.settings.toots,
+});
+
 const starsText = n => `${num(n)} ${n === 2 ? 'نجمتان' : n >= 3 && n <= 10 ? 'نجوم' : 'نجمة'}`;
 const secretText = n => (n === 1 ? 'وصفة سرّية واحدة' : n === 2 ? 'وصفتان سرّيتان' : n <= 10 ? `${num(n)} وصفات سرّية` : `${num(n)} وصفة سرّية`);
 
-// Speak with a talking animation on the mascot (or on the customer).
+// Speak with a talking animation on the mascot (or on the customer, or any element).
+// After a wacky dish the mascot speaks its next few lines in a funny voice (voiceFx).
 let talkId = 0;
-function speakOut(parts, { interrupt = true, by = 'mascot', force = false } = {}) {
+let lastTalker = null;
+// Customers' own lines and acting lines ([giggles] …) only make sense in their recorded
+// voice, so they stay silent until their clip is made; then they play by themselves.
+const needsClip = part => { const k = speakable(part); return !!splitCast(k).who || TAGGED.test(k); };
+const canSay = part => !needsClip(part) || Clips.has(speakable(part));
+let voiceFx = { kind: null, left: 0 };
+function speakOut(parts, { interrupt = true, by = 'mascot', force = false, fx = null } = {}) {
+  parts = [].concat(parts).filter(canSay);
+  if (!parts.length) return;
   const id = ++talkId;
-  const who = by === 'customer' ? orderEl : bowlWrap;
+  const who = by === 'customer' ? orderEl : by === 'mascot' ? bowlWrap : by;
+  let lastFunny = false;
+  if (by === 'mascot' && !fx && voiceFx.left > 0) {
+    fx = voiceFx.kind;
+    lastFunny = --voiceFx.left === 0;
+  }
+  const quiet = () => {
+    bowlWrap.classList.remove('talking');
+    orderEl.classList.remove('talking');
+    caption.classList.remove('talking');
+    if (lastTalker) lastTalker.classList.remove('talking');
+  };
   Narrator.speak(parts, {
     interrupt,
     force,
+    fx,
     onstart: () => {
-      bowlWrap.classList.remove('talking');
-      orderEl.classList.remove('talking');
+      quiet();
+      lastTalker = who;
       who.classList.add('talking');
-      if (by !== 'customer') caption.classList.add('talking');
+      if (by === 'mascot') caption.classList.add('talking');
     },
     onend: () => {
-      if (id !== talkId) return;
-      bowlWrap.classList.remove('talking');
-      orderEl.classList.remove('talking');
-      caption.classList.remove('talking');
+      if (lastFunny && !voiceFx.left) caption.classList.remove('fx-squeaky', 'fx-deep', 'fx-wobbly');
+      if (id === talkId) quiet();
     },
   });
+}
+
+// The mascot's next lines come out squeaky, deep or wobbly.
+function funnyVoice(kind, lines = 3) {
+  voiceFx = { kind, left: lines };
+  caption.classList.remove('fx-squeaky', 'fx-deep', 'fx-wobbly');
+  caption.classList.add('fx-' + kind);
 }
 
 // The mascot's speech bubble (the caption) + voice.
@@ -556,7 +599,7 @@ function cancelDrag() {
    Bowl logic
    ===================================================================== */
 function canAdd() {
-  return !state.busy && state.bowl.includes(null);
+  return !state.busy && !state.show && state.bowl.includes(null);
 }
 
 function rejectFeedback() {
@@ -577,7 +620,7 @@ function tapAdd(id, tile) {
 
 function addToBowl(id, ghost, tile, arc) {
   const i = state.bowl.indexOf(null);
-  if (state.busy || i < 0) { rejectFeedback(); return false; }
+  if (state.busy || state.show || i < 0) { rejectFeedback(); return false; }
   state.bowl[i] = id;
   state.pending++;
   if (!state.bowl.includes(null)) state.busy = true;
@@ -677,12 +720,13 @@ function updateLiquid(forceColor) {
 }
 
 function squish() {
-  bowlSvg.classList.remove('squish', 'giggle', 'sneeze');
+  bowlSvg.classList.remove(...ONE_SHOT);
   void bowlSvg.getBoundingClientRect();
   bowlSvg.classList.add('squish');
 }
+// One-shot animations (squish, giggle, the gags in js/gags.js) are named after their class.
 bowlSvg.addEventListener('animationend', e => {
-  if (['squish', 'giggle', 'sneeze'].includes(e.animationName)) bowlSvg.classList.remove(e.animationName);
+  if (e.target === bowlSvg) bowlSvg.classList.remove(e.animationName);
 });
 
 let faceTimer = 0;
@@ -819,17 +863,21 @@ function onCookEvent(type, info) {
     Sound.boing();
     say('ليس بعد! انتظر قليلًا. ⏳', { speech: PHRASES.cookEarly });
   } else if (type === 'spoilt') {
+    // Too far: a little show (soot on the mascot, or the lid lands on its head), then try again.
     const c = foodCenter();
     if (how === 'boil') {
       Sound.boilOver();
       FX.puff(c.x, c.y, '#ffffff');
-      setFace('wow', 1600);
+      setFace('wow');
+      setCaption(`${lines.spoilt} 🫧`);
+      gags.lidBonk(cookFood.getBoundingClientRect()).then(() => speakOut([GAG_LINES.bonk, lines.spoilt]));
     } else {
       Sound.poof();
       FX.puff(c.x, c.y, '#6e625a');
-      setFace('dizzy', 1600);
+      gags.soot();
+      setCaption(`${lines.spoilt} 💨`);
+      speakOut([GAG_LINES.soot, lines.spoilt]);
     }
-    say(`${lines.spoilt} ${how === 'boil' ? '🫧' : '💨'}`, { speech: lines.spoilt });
   } else if (type === 'help') {
     cooking.helped = true; // spoken with the result, so the reveal doesn't cut it off
   } else if (type === 'done') {
@@ -887,7 +935,7 @@ async function mix({ stirred = false } = {}) {
     clearBowl();
 
     if (!res) {
-      failReaction(bowlCenter());
+      await failReaction(bowlCenter(), mixed);
       save();
       return;
     }
@@ -900,6 +948,9 @@ async function mix({ stirred = false } = {}) {
     const isNew = !state.discovered.has(res);
     const orderHit = res === state.orderTarget;
     const token = ++resultToken;
+    // Wacky dishes (and a few others) give the mascot a funny voice.
+    const fx = item.voice || (item.kind === 'wacky' ? pick(['squeaky', 'deep', 'wobbly']) : null);
+    if (fx) funnyVoice(fx);
     updateLiquid(item.color);
     Sound.ovenDing();
     showResult(res, isNew);
@@ -912,6 +963,7 @@ async function mix({ stirred = false } = {}) {
         FX.splat(c.x, c.y, item.color);
         setFace('dizzy', 2200);
         speakOut([PHRASES.mishap, item.name, item.desc]);
+        if (state.customer && state.orderTarget && !orderEl.hidden) setTimeout(() => gags.yuck(state.customer), 900);
       } else {
         setTimeout(() => Sound.magic(), 140);
         FX.sparkle(c.x, c.y, item.emoji);
@@ -925,8 +977,12 @@ async function mix({ stirred = false } = {}) {
       FX.mini(c.x, c.y);
       setFace('happy', 1500);
       speakOut([...lead, item.name, PHRASES.again]);
-      setTimeout(() => { if (token === resultToken) hideResult(); }, 1300);
+      if (item.kind === 'mishap' && state.customer && state.orderTarget && !orderEl.hidden) setTimeout(() => gags.yuck(state.customer), 900);
+      const trick = !orderHit && item.kind !== 'mishap' && pickSurprise();
+      if (trick) setTimeout(() => { if (token === resultToken) surprise(trick, res); }, 1100);
+      else setTimeout(() => { if (token === resultToken) hideResult(); }, 1300);
     }
+    if (fx) speakOut(GAG_LINES[fx], { interrupt: false });
     if (orderHit) setTimeout(() => serveOrder(res), isNew ? 1500 : 700);
     save();
     await wait(650); // let the reveal land before accepting new ingredients
@@ -942,32 +998,100 @@ async function mix({ stirred = false } = {}) {
 }
 
 // No such thing as a wrong mix — the bowl just does something silly.
-function failReaction(c) {
-  const r = pick(FAIL_REACTIONS);
+// Never the same one twice in a row; toots only if the grown-ups allow them.
+let lastFail = null;
+async function failReaction(c, mixed) {
+  const r = pick(FAIL_REACTIONS.filter(f => f.style !== lastFail && (f.style !== 'toot' || state.settings.toots)));
+  lastFail = r.style;
   updateLiquid(MUDDY);
-  bowlSvg.classList.remove('squish', 'giggle', 'sneeze');
+  bowlSvg.classList.remove(...ONE_SHOT);
   void bowlSvg.getBoundingClientRect();
+  if (r.style === 'sneeze') {
+    // Flour covers the screen until the child wipes it off.
+    say(r.text, { speech: [r.text, GAG_LINES.flour] });
+    setTimeout(() => { if (!state.bowl.some(Boolean)) updateLiquid(); }, 900);
+    await gags.sneeze();
+    bowlCaption();
+    return;
+  }
+  say(r.text);
   if (r.style === 'giggle') {
     Sound.giggle();
     setFace('happy', 1600);
     bowlSvg.classList.add('giggle');
     FX.mini(c.x, c.y);
-  } else if (r.style === 'sneeze') {
-    setFace('wow');
-    Sound.sneeze();
-    bowlSvg.classList.add('sneeze');
-    setTimeout(() => { FX.puff(c.x, c.y); setFace('meh', 1400); }, 420);
   } else if (r.style === 'dizzy') {
     Sound.boing();
     setFace('dizzy', 1600);
     FX.mini(c.x, c.y);
+  } else if (r.style === 'hiccup') {
+    gags.hiccups();
+  } else if (r.style === 'burp') {
+    gags.burp();
+  } else if (r.style === 'toot') {
+    gags.toot();
+  } else if (r.style === 'spit') {
+    spitOut(mixed);
   } else {
     Sound.nope();
     setFace('meh', 1600);
     FX.puff(c.x, c.y);
   }
-  say(r.text);
   setTimeout(() => { if (!state.bowl.some(Boolean)) updateLiquid(); }, 900);
+}
+
+// The bowl spits the ingredients out: they bounce off the walls and land back in the pantry.
+function spitOut(mixed) {
+  const c = bowlCenter();
+  const st = station.getBoundingClientRect();
+  Sound.silly('spit');
+  setFace('meh', 1600);
+  gags.kick(bowlSvg, 'spit', 600);
+  FX.splat(c.x, c.y - 20, MUDDY);
+  mixed.forEach((id, i) => {
+    const g = makeGhost(id, { left: c.x - GHOST / 2, top: c.y - GHOST / 2, width: GHOST, height: GHOST });
+    const side = i % 2 ? 1 : -1;
+    const wall = { x: side > 0 ? st.right - GHOST : st.left, y: st.top + st.height * (.15 + Math.random() * .3) };
+    const tile = findTile(id);
+    const t = tile ? tile.getBoundingClientRect() : null;
+    const end = t ? { x: t.left + t.width / 2 - GHOST / 2, y: t.top + t.height / 2 - GHOST / 2 } : { x: wall.x, y: st.bottom };
+    const frames = [
+      { transform: ghostT(c.x - GHOST / 2, c.y - GHOST / 2, 0, .6) },
+      { transform: ghostT(wall.x, wall.y, side * 200, 1.1), offset: .4 },
+      { transform: ghostT((wall.x + end.x) / 2, Math.min(wall.y, end.y) - 60, side * 400, 1), offset: .7 },
+      { transform: ghostT(end.x, end.y, side * 720, t ? .8 : .3), opacity: t ? 1 : 0 },
+    ];
+    setTimeout(() => Sound.boing(), 420 + i * 60);
+    anim(g, frames, { duration: reducedMotion.matches ? 200 : 1100, delay: i * 90, easing: 'cubic-bezier(.3,.6,.5,1)', fill: 'forwards' }).then(() => {
+      g.remove();
+      if (tile && tile.isConnected) { tile.classList.remove('arrive'); void tile.offsetWidth; tile.classList.add('arrive'); }
+    });
+  });
+}
+
+/* ---------------------------------------------------------------------
+   Rare surprises after a dish the child has made before
+   --------------------------------------------------------------------- */
+let sinceSurprise = 0;
+function pickSurprise() {
+  sinceSurprise++;
+  if (reducedMotion.matches || state.stats.mixes < 6 || sinceSurprise < 5 || Math.random() > .25) return null;
+  sinceSurprise = 0;
+  return pick(['runaway', 'thief', 'chicks']);
+}
+
+async function surprise(kind, id) {
+  const r = resultEmo.getBoundingClientRect();
+  const from = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  const dish = { id, ...ITEMS[id] };
+  if (kind === 'chicks') {
+    gags.chicks();
+    setTimeout(hideResult, 400);
+    return;
+  }
+  resultPop.hidden = true;
+  if (kind === 'runaway') await gags.runaway(dish, from);
+  else await gags.thief(dish, from, CUSTOMERS.find(c => c.art === 'cust-cat')?.art);
 }
 
 function showResult(id, isNew) {
@@ -1179,10 +1303,18 @@ async function serveOrder(id) {
   void orderStars.offsetWidth;
   orderStars.classList.add('bump');
   Sound.coin();
+  // The customer comes down, eats it, and does their trick.
+  state.show = true;
+  try {
+    await gags.feast(state.customer, { id, ...ITEMS[id] });
+  } finally {
+    state.show = false;
+  }
+  if (tok !== orderToken) return;
   const r = orderCust.getBoundingClientRect();
   FX.sparkle(r.left + r.width / 2, r.top + r.height / 2, '💖');
-  if (state.stars % 5 === 0) setTimeout(starMilestone, 900);
-  await wait(2400);
+  if (state.stars % 5 === 0) setTimeout(starMilestone, 400);
+  await wait(900);
   if (tok !== orderToken) return;
   orderEl.classList.add('leave');
   await wait(350);
@@ -1198,6 +1330,7 @@ function starMilestone() {
 }
 
 function skipOrder() {
+  if (state.show) return;
   Sound.tap();
   const tok = ++orderToken;
   orderEl.classList.add('leave');
@@ -1218,7 +1351,7 @@ function onOrderTap() {
    ===================================================================== */
 function giveHint() {
   Sound.ensure();
-  if (state.busy) return;
+  if (state.busy || state.show) return;
   squish();
   Sound.boing();
   let rec = state.orderTarget ? COOKBOOK.stepToward(state.orderTarget, has) : null;
@@ -1513,6 +1646,7 @@ function renderSwitches() {
   swVoice.setAttribute('aria-checked', String(state.settings.voice));
   swSfx.setAttribute('aria-checked', String(state.settings.sfx));
   swMusic.setAttribute('aria-checked', String(state.settings.music));
+  swToots.setAttribute('aria-checked', String(state.settings.toots));
 }
 
 const clipsText = n => (n === 1 ? 'مقطع واحد' : n === 2 ? 'مقطعان' : n >= 3 && n <= 10 ? `${num(n)} مقاطع` : `${num(n)} مقطعًا`);
@@ -1693,9 +1827,10 @@ let lastNudge = 0;
 function noteActivity() { lastActivity = Date.now(); }
 setInterval(() => {
   const now = Date.now();
-  if (!startScreen.hidden || state.busy || topModal() || document.hidden) return;
+  if (!startScreen.hidden || state.busy || state.show || topModal() || document.hidden) return;
   if (now - lastActivity > 25000 && now - lastNudge > 90000) {
     lastNudge = now;
+    if (state.stats.mixes > 3 && Math.random() < .35) { gags.chicks(); return; }
     squish();
     setFace('happy', 1500);
     say('اضغط عليّ إذا احتجت مساعدة! 🤗', { revertMs: 5000, speech: PHRASES.nudge });
@@ -1719,6 +1854,7 @@ function startGame() {
   if (state.orderTarget) speakOut(orderParts(), { interrupt: false, by: 'customer' });
   if (!returning) setTimeout(showCoach, 1400);
   setTimeout(() => Clips.preloadAll(), 2500);
+  setTimeout(() => Sound.preloadClips(), 1200);
 }
 
 /* =====================================================================
@@ -1769,6 +1905,7 @@ function init() {
   Sound.setSfx(state.settings.sfx);
   Narrator.setEnabled(state.settings.voice);
   Clips.load();
+  Sound.loadClips();
   FX.resize();
   renderChips();
   renderPantry();
@@ -1798,13 +1935,19 @@ function init() {
   });
   btnEmpty.addEventListener('click', () => { for (let i = state.bowl.length - 1; i >= 0; i--) removeFromSlot(i); });
   // While the bowl waits to be stirred, a tap (or Enter) stirs it for the child.
-  const onBowlTap = () => (state.stirring ? stirrer.autoStir() : giveHint());
+  // Quick taps again and again tickle the mascot instead.
+  const onBowlTap = () => {
+    if (state.stirring) { stirrer.autoStir(); return; }
+    if (!state.busy && !state.show && gags.tickle()) return;
+    giveHint();
+  };
   bowlWrap.addEventListener('click', onBowlTap);
   bowlWrap.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onBowlTap(); }
   });
 
   orderBubble.addEventListener('click', onOrderTap);
+  orderCust.addEventListener('click', () => { Sound.ensure(); gags.pokeCustomer(state.customer); });
   orderSkip.addEventListener('click', skipOrder);
 
   btnBook.addEventListener('click', openBook);
@@ -1838,6 +1981,7 @@ function init() {
   swVoice.addEventListener('click', () => toggleSetting('voice'));
   swSfx.addEventListener('click', () => toggleSetting('sfx'));
   swMusic.addEventListener('click', () => toggleSetting('music'));
+  swToots.addEventListener('click', () => toggleSetting('toots'));
   btnTestVoice.addEventListener('click', () => speakOut(PHRASES.test, { force: true }));
   btnReset.addEventListener('click', onReset);
   btnInstall.addEventListener('click', onInstall);

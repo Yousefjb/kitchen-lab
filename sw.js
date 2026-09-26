@@ -2,9 +2,10 @@
 // Network first (so updates arrive right away), falling back to the cached copy offline.
 // Requests always check with the server (cache: 'no-cache'), so the browser never mixes
 // an old copy of one code file with a new copy of another after an update.
-// Voice clips are the exception: their file names are a hash of the words, so a cached
-// clip never goes stale and is played straight from the cache (no wait on a slow network).
-const CACHE = 'kitchen-lab-v8';
+// Voice clips and silly sounds are the exception: their file names are a hash of what they
+// say, so a cached clip never goes stale and is played straight from the cache (no wait on a
+// slow network).
+const CACHE = 'kitchen-lab-v9';
 // Every code, style and data file. tools/check-data.mjs tells you if one is missing.
 const ASSETS = [
   './',
@@ -21,6 +22,7 @@ const ASSETS = [
   './js/stir.js',
   './js/cook.js',
   './js/voice.js',
+  './js/gags.js',
   './data/items.js',
   './data/customers.js',
   './data/phrases.js',
@@ -47,6 +49,15 @@ self.addEventListener('install', event => {
         await cache.addAll(Object.values(clips).map(f => './voice/' + f));
       }
     } catch (e) { /* no voice clips yet */ }
+    // Silly sounds (made by tools/make-sfx.mjs).
+    try {
+      const res = await fetch('./sfx/manifest.json', { cache: 'no-cache' });
+      if (res.ok) {
+        await cache.put('./sfx/manifest.json', res.clone());
+        const { sounds = {} } = await res.json();
+        await cache.addAll(Object.values(sounds).map(f => './sfx/' + f));
+      }
+    } catch (e) { /* no recorded sounds yet */ }
     // Sticker pictures (made by tools/make-images.mjs) so they also show offline.
     try {
       const res = await fetch('./img/manifest.json', { cache: 'no-cache' });
@@ -86,11 +97,11 @@ self.addEventListener('fetch', event => {
   const url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== self.location.origin) return;
   const offline = () => caches.match(req).then(hit => hit || (req.mode === 'navigate' ? caches.match('./index.html') : undefined));
-  if (/\/voice\/.+\.mp3$/.test(url.pathname)) {
+  if (/\/(voice|sfx)\/.+\.mp3$/.test(url.pathname)) {
     event.respondWith(caches.match(req).then(hit => hit || fromNetwork(req)));
     return;
   }
-  if (url.pathname.endsWith('/voice/manifest.json')) {
+  if (/\/(voice|sfx)\/manifest\.json$/.test(url.pathname)) {
     event.respondWith((async () => {
       const net = fromNetwork(req);
       const cached = await caches.match(req);

@@ -1,11 +1,22 @@
 // Every line the game can say out loud. tools/make-voice.mjs imports this to
 // know which voice clips to make, and the game uses it to match text to clips.
 import { KITCHENS } from './kitchens.js';
-import { PHRASES, FAIL_REACTIONS, COOK_LINES } from '../data/phrases.js';
+import { PHRASES, FAIL_REACTIONS, COOK_LINES, GAG_LINES } from '../data/phrases.js';
 import { CUSTOMERS } from '../data/customers.js';
 
 // "Bear wants" / "Bunny wants": the start of a customer's order.
 export const customerAsk = c => `${c.name} ${c.f ? 'تريد' : 'يريد'}`;
+
+// [acting notes] for the voice (ElevenLabs v3 audio tags) are never shown or read out.
+export const TAGGED = /\[[^\]]*\]/;
+export const stripTags = s => String(s).replace(/\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').trim();
+
+// A line said in a customer's own voice is stored as "cust-bear: text".
+export const castKey = (art, text) => `${art}: ${text}`;
+export const splitCast = key => {
+  const m = /^(cust-[a-z]+): (.*)$/s.exec(key);
+  return m ? { who: m[1], text: m[2] } : { who: null, text: key };
+};
 
 // Text for the speech engine: drop emoji and symbols it would read out loud.
 export const speakable = s => String(s)
@@ -15,7 +26,10 @@ export const speakable = s => String(s)
   .replace(/\s+/g, ' ')
   .trim();
 
-// Every distinct piece of speech the game can use, in every kitchen.
+// What the device's own voice reads: no acting notes, no "cust-bear:" label.
+export const plainSpeech = key => stripTags(splitCast(key).text);
+
+// Every distinct piece of speech the mascot can use, in every kitchen.
 export function voiceParts() {
   const out = new Set(Object.values(PHRASES));
   for (const k of Object.values(KITCHENS)) {
@@ -25,5 +39,11 @@ export function voiceParts() {
   CUSTOMERS.forEach(c => out.add(customerAsk(c)));
   FAIL_REACTIONS.forEach(r => out.add(r.text));
   for (const l of Object.values(COOK_LINES)) [l.go, l.now, l.spoilt, l.done].forEach(t => out.add(t));
+  for (const v of Object.values(GAG_LINES)) [].concat(v).forEach(t => out.add(t));
   return [...new Set([...out].map(speakable).filter(Boolean))];
+}
+
+// Lines each customer says in their own voice, as castKey()s.
+export function castParts() {
+  return CUSTOMERS.flatMap(c => [c.lines.yum, c.lines.yuck, ...c.lines.poke].map(t => castKey(c.art, speakable(t))));
 }

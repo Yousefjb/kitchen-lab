@@ -136,6 +136,13 @@ export const FX = (() => {
     puff(x, y, color = '#bba99a') {
       ring(12, a => spawn({ type: 'smoke', x: x + Math.cos(a) * 30, y: y + Math.sin(a) * 10, vx: Math.cos(a) * rnd(20, 70), vy: rnd(-80, -20), g: -20, drag: .97, life: rnd(.8, 1.3), size: rnd(10, 18), grow: 38, color }));
     },
+    // Bits of food flying off a big bite.
+    crumbs(x, y, color = '#d9a06b') {
+      ring(10, a => {
+        const s = rnd(80, 240);
+        spawn({ type: 'dot', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 160, g: 900, drag: .97, life: rnd(.5, .9), size: rnd(3, 6), color: Math.random() < .6 ? color : '#f3d9a4' });
+      });
+    },
     mini(x, y) {
       ring(14, a => {
         const s = rnd(90, 260);

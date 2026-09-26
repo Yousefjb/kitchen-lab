@@ -19,22 +19,25 @@ Adding dishes, recipes or whole kitchens only touches `data/`.
 | `data/items.js` | Every ingredient and dish, listed once: name, emoji, colour, description |
 | `data/kitchens/*.js` | One file per kitchen: its items, tiers, starters and recipes |
 | `data/kitchens/index.js` | Which kitchens exist, in menu order |
-| `data/customers.js` | The customers who bring orders |
-| `data/phrases.js` | The mascot's reusable lines, silly bowl reactions, album labels |
+| `data/customers.js` | The customers who bring orders: their trick after eating, their own voice and lines |
+| `data/phrases.js` | The mascot's reusable lines, silly bowl reactions, gag lines, album labels |
 | `js/recipes.js` | The recipe engine: lookups, hints, order difficulty. Shared with the tools. |
 | `js/kitchens.js` | Builds each kitchen from the data, and checks it for mistakes |
 | `js/voice-lines.js` | The list of every spoken line (used by the game and the voice tool) |
 | `js/main.js` | The game itself: bowl, pantry, orders, album, parents' corner |
 | `js/stir.js` | Stirring the full bowl: the spoon gesture and the colour swirl |
 | `js/cook.js` | Cooking after the stir (fry, boil, bake, melt): the meter and the timing |
+| `js/gags.js` | The silly stuff: customers eating and burping, tickles, flour on the screen, the flying pot lid, soot, surprises |
 | `js/sound.js`, `js/fx.js`, `js/voice.js`, `js/util.js` | Sound effects, particles, narration, small helpers |
 | `sw.js` | Offline cache (service worker) |
 | `manifest.webmanifest`, `icons/` | App install info and icons |
-| `voice/ar/*.mp3`, `voice/manifest.json` | Narration clips (ElevenLabs), one per spoken line |
+| `voice/ar/*.mp3`, `voice/manifest.json` | Narration clips (ElevenLabs), one per spoken line, plus the customers' own voices |
+| `sfx/*.mp3`, `sfx/manifest.json` | Silly sounds (ElevenLabs Sound Effects): burps, toots, bonks… |
 | `img/*.webp`, `img/manifest.json` | Sticker pictures used in the game (256×256, transparent) |
 | `img/src/*.webp` | Original 1024×1024 pictures from ElevenLabs |
 | `tools/check-data.mjs` | Checks the data for mistakes (`npm run check`) |
-| `tools/make-voice.mjs` | Makes the narration clips |
+| `tools/make-voice.mjs` | Makes the narration clips and the customers' voices |
+| `tools/make-sfx.mjs`, `tools/sfx-prompts.json` | Makes the silly sounds, from one prompt per sound |
 | `tools/make-images.mjs` | Turns `img/src/` originals into game pictures |
 | `tools/image-prompts.json` | The prompt for every picture, plus the shared style |
 
@@ -99,6 +102,48 @@ Other commands:
 | `node tools/make-voice.mjs design [--desc "..."]` | Design 3 new sample voices to listen to |
 | `node tools/make-voice.mjs keep <generated_voice_id>` | Save a designed sample as your voice |
 | `node tools/make-voice.mjs make --voice <voice_id> --yes` | Switch voice. This remakes **every** clip (about 4,300 credits). |
+
+### Acting lines and customer voices
+
+Lines with `[acting notes]` in them, like `'[giggles] هيهي!'`, are made with `eleven_v3`,
+which acts them out. The notes are never shown or read out.
+
+Each customer speaks their own lines (after eating, at a mishap, when tickled) in a voice
+of their own, designed from their `voice` description in `data/customers.js`. Design all
+ten voices once (a few hundred credits each), then make their lines with `make`:
+
+```bash
+node tools/make-voice.mjs cast --yes
+node tools/make-voice.mjs make --yes
+```
+
+`cast` keeps the first design and saves a sample to `voice/previews/cust-<name>.mp3`.
+Don't like one? Design it again, then remake its lines:
+
+```bash
+node tools/make-voice.mjs cast cust-bear --redo --yes
+```
+
+## Silly sounds
+
+Burps, toots, bonks, the smoke alarm and the other silly sounds are made with ElevenLabs
+Sound Effects, one prompt per sound in `tools/sfx-prompts.json`. Until a sound is made,
+the game plays a synthesized stand-in (`SYNTH` in `js/sound.js`).
+
+```bash
+node tools/make-sfx.mjs plan
+node tools/make-sfx.mjs make --yes
+```
+
+Each try comes out a little different. To make one sound again:
+
+```bash
+node tools/make-sfx.mjs redo burpBig --yes
+```
+
+To add a sound: add a prompt to `tools/sfx-prompts.json` and a stand-in with the same name
+to `SYNTH` in `js/sound.js`, then play it with `Sound.silly('name')`.
+Grown-ups can switch the toot jokes off in the parents' corner; everyone burps instead.
 
 ## Pictures (stickers)
 

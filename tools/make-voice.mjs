@@ -17,6 +17,7 @@
 //   node tools/make-voice.mjs add <owner_id> <voice_id> add a Voice Library voice to your account (paid plan)
 //   node tools/make-voice.mjs voices                    list the voices in your account
 //   node tools/make-voice.mjs make --voice <voice_id> [--model eleven_multilingual_v2] [--yes]
+//   node tools/make-voice.mjs cast [cust-bear …] [--yes] design a voice of their own for each customer
 //   node tools/make-voice.mjs prune                     delete clip files that are no longer used
 //
 // Free plan: Voice Library voices can't be used through the API, but voices you
@@ -24,12 +25,17 @@
 //
 // "make" only spends credits when you add --yes, skips clips that already exist,
 // and can be re-run safely if it stops halfway.
+//
+// Lines with [acting notes] (e.g. "[giggles] هيهي!") are made with eleven_v3, which acts
+// them out. Customers' own lines ("cust-bear: …") use that customer's voice (see "cast")
+// and eleven_v3 too.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { voiceParts } from '../js/voice-lines.js';
+import { voiceParts, castParts, splitCast, TAGGED } from '../js/voice-lines.js';
+import { CUSTOMERS } from '../data/customers.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const VOICE_DIR = path.join(ROOT, 'voice');
@@ -39,6 +45,7 @@ const API = 'https://api.elevenlabs.io';
 const DEFAULT_MODEL = 'eleven_multilingual_v2';
 const FORMAT = 'mp3_22050_32'; // small files, clear speech; available on the free tier
 const LANGUAGE_CODE_MODELS = new Set(['eleven_flash_v2_5', 'eleven_turbo_v2_5']);
+const ACTING_MODEL = 'eleven_v3'; // for lines with [acting notes], and the customers
 
 const [, , command = 'plan', ...rest] = process.argv;
 const flags = {};
@@ -78,8 +85,8 @@ const PAID_VOICE_HELP = `This voice comes from the Voice Library, which the free
 
 function explain(status, text) {
   if (status === 402 || /paid_plan_required|payment_required/.test(text)) return PAID_VOICE_HELP;
-  if (status === 401) return `Your API key was rejected (401). ${text.slice(0, 300)}`;
   if (/quota_exceeded/.test(text)) return `You've used this month's credits. ${text.slice(0, 300)}`;
+  if (status === 401) return `Your API key was rejected (401). ${text.slice(0, 300)}`;
   return `ElevenLabs said ${status}: ${text.slice(0, 400)}`;
 }
 
@@ -90,8 +97,15 @@ async function apiJson(pathname, opts) {
   return JSON.parse(text);
 }
 
-// Every line the game can speak, from the game's own data.
-const loadLines = voiceParts;
+// Every line the game can speak, from the game's own data: the mascot's, then the customers'.
+const loadLines = () => [...voiceParts(), ...castParts()];
+
+// Which voice and model make a line. Null voice: that customer has no voice yet ("cast").
+function voiceFor(key, m, voiceId, model) {
+  const { who, text } = splitCast(key);
+  if (who) return { voice: m.cast?.[who]?.voiceId || null, model: ACTING_MODEL, text };
+  return { voice: voiceId, model: TAGGED.test(text) ? ACTING_MODEL : model, text };
+}
 
 function readManifest() {
   try {
@@ -115,15 +129,22 @@ const exists = rel => fs.existsSync(path.join(VOICE_DIR, rel));
 function plan(voiceId, model) {
   const lines = loadLines();
   const m = readManifest();
-  const todo = voiceId
-    ? lines.filter(t => m.clips[t] !== clipFile(t, voiceId, model) || !exists(m.clips[t]))
-    : lines.filter(t => !m.clips[t] || !exists(m.clips[t]));
-  const chars = todo.reduce((n, t) => n + t.length, 0);
-  return { lines, todo, chars, manifest: m };
+  const uncast = new Set();
+  let waiting = 0; // customers' lines that wait for their voice
+  const todo = lines.filter(t => {
+    const v = voiceFor(t, m, voiceId, model);
+    if (!v.voice) {
+      if (splitCast(t).who) { uncast.add(splitCast(t).who); waiting++; return false; }
+      return !m.clips[t] || !exists(m.clips[t]);
+    }
+    return m.clips[t] !== clipFile(v.text, v.voice, v.model) || !exists(m.clips[t]);
+  });
+  const chars = todo.reduce((n, t) => n + voiceFor(t, m, voiceId, model).text.length, 0);
+  return { lines, todo, chars, manifest: m, uncast: [...uncast], waiting };
 }
 
 function voiceSettings(model) {
-  if (model.startsWith('eleven_v3')) return { stability: 0.5 };
+  if (model.startsWith('eleven_v3')) return { stability: 0.5 }; // "natural": acts, but stays on script
   // Warm and steady for young listeners, slightly slower than normal.
   return { stability: 0.5, similarity_boost: 0.8, style: 0.25, use_speaker_boost: true, speed: 0.92 };
 }
@@ -152,10 +173,11 @@ async function cmdPlan() {
   const m = readManifest();
   const voiceId = flags.voice || m.voiceId;
   const model = flags.model || m.model || DEFAULT_MODEL;
-  const { lines, todo, chars } = plan(voiceId, model);
+  const { lines, todo, chars, uncast, waiting } = plan(voiceId, model);
   console.log(`\nThe game can say ${lines.length} different lines (${lines.reduce((n, t) => n + t.length, 0)} characters).`);
-  console.log(`Clips ready: ${lines.length - todo.length}. Missing: ${todo.length} (${chars} characters ≈ ${chars} credits).`);
+  console.log(`Clips ready: ${lines.length - todo.length - waiting}. Missing: ${todo.length} (${chars} characters ≈ ${chars} credits; acting lines on eleven_v3 may cost more).`);
   if (m.voiceId) console.log(`Current voice: ${m.voiceName || m.voiceId} · model ${m.model}`);
+  if (uncast.length) console.log(`${waiting} customer lines wait for a voice: ${uncast.join(', ')}\n  Give them one:  node tools/make-voice.mjs cast --yes`);
   if (todo.length) {
     console.log('\nNext step:');
     console.log(voiceId
@@ -256,8 +278,9 @@ async function cmdMake() {
   const voiceId = flags.voice || m.voiceId;
   const model = flags.model || m.model || DEFAULT_MODEL;
   if (!voiceId) fail('Choose a voice:  node tools/make-voice.mjs make --voice <voice_id>   (see "find" or "voices")');
-  const { lines, todo, chars } = plan(voiceId, model);
+  const { lines, todo, chars, uncast } = plan(voiceId, model);
   console.log(`\nVoice ${voiceId} · model ${model}`);
+  if (uncast.length) console.log(`Skipping customers without a voice yet: ${uncast.join(', ')} (run "cast" first).`);
   console.log(`${todo.length} of ${lines.length} clips to make · ${chars} characters (≈ ${chars} credits).`);
   if (!todo.length) return console.log('Everything is already made. 🎉\n');
   if (!flags.yes) return console.log('\nNothing was sent yet. Add --yes to make them.\n');
@@ -267,18 +290,19 @@ async function cmdMake() {
     const res = await api(`/v1/voices/${encodeURIComponent(voiceId)}`);
     if (res.ok) voiceName = (await res.json()).name;
   }
+  // A changed voice or model shows up as a changed file name, so only those clips are remade.
   const manifest = { ...m, version: 1, provider: 'elevenlabs', voiceId, voiceName, model, format: FORMAT };
-  if (m.voiceId && (m.voiceId !== voiceId || m.model !== model)) manifest.clips = {}; // new voice: remake everything
 
   fs.mkdirSync(CLIP_DIR, { recursive: true });
   let made = 0;
-  for (const text of todo) {
-    const rel = clipFile(text, voiceId, model);
-    const audio = await synthesize(text, voiceId, model);
+  for (const key of todo) {
+    const v = voiceFor(key, manifest, voiceId, model);
+    const rel = clipFile(v.text, v.voice, v.model);
+    const audio = await synthesize(v.text, v.voice, v.model);
     fs.writeFileSync(path.join(VOICE_DIR, rel), audio);
-    manifest.clips[text] = rel;
+    manifest.clips[key] = rel;
     made++;
-    console.log(`  ${String(made).padStart(3)}/${todo.length}  ${text}`);
+    console.log(`  ${String(made).padStart(3)}/${todo.length}  ${key}`);
     if (made % 5 === 0) writeManifest({ ...manifest, updatedAt: new Date().toISOString() });
   }
   // Forget lines the game no longer says (files stay until "prune").
@@ -286,6 +310,57 @@ async function cmdMake() {
   for (const t of Object.keys(manifest.clips)) if (!keep.has(t)) delete manifest.clips[t];
   writeManifest({ ...manifest, updatedAt: new Date().toISOString() });
   console.log(`\n✓ Made ${made} clips. Reload the game to hear the new voice.\n`);
+}
+
+// A voice of their own for each customer, designed from their `voice` in data/customers.js.
+// Keeps the first of the 3 designs and saves it to your ElevenLabs voices; the sample is in
+// voice/previews/<art>.mp3. Don't like one? Run "cast <art> --redo --yes" for a new design.
+const CAST_MODEL = 'eleven_ttv_v3';
+const CAST_STYLE = 'Speaks Modern Standard Arabic (Fusha) with a natural native Arabic accent. ' +
+  'A cartoon character in a children\'s cooking game: expressive, funny and warm, perfect audio quality.';
+
+async function cmdCast() {
+  const m = readManifest();
+  const pickArts = positional.length ? positional : CUSTOMERS.map(c => c.art);
+  const unknown = pickArts.filter(a => !CUSTOMERS.some(c => c.art === a));
+  if (unknown.length) fail(`Unknown customer(s): ${unknown.join(', ')}. Use: ${CUSTOMERS.map(c => c.art).join(', ')}`);
+  const todo = CUSTOMERS.filter(c => pickArts.includes(c.art) && (flags.redo || !m.cast?.[c.art]?.voiceId));
+  console.log(`\n${todo.length} customer voice(s) to design${todo.length ? ': ' + todo.map(c => c.art).join(', ') : ''}.`);
+  if (!todo.length) return console.log('Every customer already has a voice. (Add --redo to design one again.)\n');
+  console.log('Each design costs a few hundred credits.');
+  if (!flags.yes) return console.log('\nNothing was sent yet. Add --yes to design them.\n');
+  const dir = path.join(VOICE_DIR, 'previews');
+  fs.mkdirSync(dir, { recursive: true });
+  const blocked = [];
+  for (const c of todo) {
+    let text = [c.lines.yum, ...c.lines.poke, c.lines.yuck].join(' ');
+    while (text.length < 120) text += ' ' + c.lines.yum;
+    const res = await api('/v1/text-to-voice/design', {
+      method: 'POST',
+      body: { voice_description: `${c.voice}. ${CAST_STYLE}`, model_id: CAST_MODEL, text: text.slice(0, 1000), output_format: 'mp3_44100_128' },
+    });
+    const raw = await res.text();
+    // ElevenLabs' safety filter can refuse a description: skip that customer and carry on.
+    if (res.status === 403 && /blocked_generation/.test(raw)) {
+      blocked.push(c.art);
+      console.log(`  ✖ ${c.art} (${c.name}): ElevenLabs blocked this voice description. Reword its "voice" in data/customers.js.`);
+      continue;
+    }
+    if (!res.ok) fail(explain(res.status, raw));
+    const data = JSON.parse(raw);
+    const first = (data.previews || [])[0];
+    if (!first) fail(`No voice came back for ${c.art}. Try again, or change its "voice" in data/customers.js.`);
+    fs.writeFileSync(path.join(dir, `${c.art}.mp3`), Buffer.from(first.audio_base_64, 'base64'));
+    const saved = await apiJson('/v1/text-to-voice', {
+      method: 'POST',
+      body: { voice_name: `Kitchen Lab · ${c.name}`, voice_description: `${c.voice}. ${CAST_STYLE}`.slice(0, 1000), generated_voice_id: first.generated_voice_id },
+    });
+    m.cast = { ...m.cast, [c.art]: { voiceId: saved.voice_id, name: c.name } };
+    writeManifest({ ...m, updatedAt: new Date().toISOString() });
+    console.log(`  ✓ ${c.art} (${c.name}) → ${saved.voice_id}   sample: voice/previews/${c.art}.mp3`);
+  }
+  if (blocked.length) console.log(`\nBlocked: ${blocked.join(', ')}. After rewording, run "cast" again (it skips the ones already done).`);
+  console.log('\nNext, make their lines:  node tools/make-voice.mjs make --yes\n');
 }
 
 async function cmdPrune() {
@@ -300,6 +375,6 @@ async function cmdPrune() {
   console.log(`\nRemoved ${removed} unused clip file(s).\n`);
 }
 
-const commands = { plan: cmdPlan, design: cmdDesign, keep: cmdKeep, find: cmdFind, add: cmdAdd, voices: cmdVoices, make: cmdMake, prune: cmdPrune };
+const commands = { plan: cmdPlan, design: cmdDesign, keep: cmdKeep, find: cmdFind, add: cmdAdd, voices: cmdVoices, make: cmdMake, cast: cmdCast, prune: cmdPrune };
 if (!commands[command]) fail(`Unknown command "${command}". Use: ${Object.keys(commands).join(', ')}`);
 commands[command]().catch(e => fail(e.message || String(e)));

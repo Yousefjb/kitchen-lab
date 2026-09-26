@@ -13,7 +13,7 @@ export const READY = [.55, .82];  // the star part of the meter
 const SLOWER = 1.35;              // each retry cooks this much slower
 const HELP_TRY = 3;               // on this try the mascot takes it out by itself
 const TICK_MS = 260;              // how often the cooking sound plays
-const SPOILT_PAUSE = 1700;        // smoke or foam clears before the next try
+const SPOILT_PAUSE = 3200;        // the smoke (or the flying lid) show plays before the next try
 const DONE_MS = 520;
 
 const lerp = (a, b, t) => a + (b - a) * t;

@@ -1,4 +1,7 @@
-// Sound effects and background chimes, synthesized with Web Audio (no audio files).
+// Sound effects and background chimes, synthesized with Web Audio.
+// The silly sounds (burps, toots, bonks…) prefer recorded ElevenLabs clips from
+// sfx/manifest.json (made by tools/make-sfx.mjs); each has a synthesized stand-in
+// for when its clip isn't made yet or hasn't loaded.
 import { rnd } from './util.js';
 
 export const Sound = (() => {
@@ -121,6 +124,75 @@ export const Sound = (() => {
     try { fn(); } catch (e) { console.warn('[CookieLab] sound error', e); }
   };
 
+  // --- silly sounds: synthesized stand-ins, one per recorded clip name ---
+  const vibTone = (o) => tone({ type: 'sawtooth', vib: 22, vibRate: 30, filter: { type: 'lowpass', f: 900 }, ...o });
+  const SYNTH = {
+    burp: () => { vibTone({ f: 120, f2: 75, dur: .5, vol: .3, vib: 14, vibRate: 18, filter: { type: 'lowpass', f: 600 } }); noise({ dur: .4, vol: .08, f: 400 }); },
+    burpBig: () => { vibTone({ f: 105, f2: 55, dur: 1.2, vol: .34, vib: 16, vibRate: 14, attack: .05, filter: { type: 'lowpass', f: 520 } }); noise({ dur: 1, vol: .08, f: 350 }); },
+    toot: () => vibTone({ f: 170, f2: 115, dur: .42, vol: .3, vib: 30, vibRate: 36 }),
+    tootLong: () => { vibTone({ f: 130, f2: 330, dur: 1.3, vol: .3, vib: 34, vibRate: 30, attack: .03, glide: 1.2 }); noise({ t: .1, dur: 1.1, vol: .06, type: 'bandpass', f: 500 }); },
+    tootTiny: () => vibTone({ type: 'square', f: 440, f2: 360, dur: .16, vol: .14, vib: 40, vibRate: 45, filter: { type: 'lowpass', f: 1800 } }),
+    hiccup: () => { tone({ type: 'sine', f: 480, f2: 980, dur: .09, vol: .3 }); noise({ dur: .03, vol: .15, type: 'highpass', f: 2000 }); },
+    chomp: () => [0, .22, .44].forEach(t => { noise({ t, dur: .09, vol: .3, f: 800 }); tone({ type: 'sine', f: 160, f2: 70, t, dur: .1, vol: .3 }); }),
+    nibble: () => { for (let i = 0; i < 9; i++) noise({ t: i * .07, dur: .03, vol: .2, type: 'highpass', f: 2500 }); },
+    slurp: () => { noise({ dur: .6, vol: .22, type: 'bandpass', f: 300, f2: 2600, q: 3, attack: .05 }); tone({ type: 'sine', f: 300, f2: 110, t: .62, dur: .16, vol: .35 }); },
+    gulp: () => { tone({ type: 'sine', f: 320, f2: 120, dur: .16, vol: .38 }); tone({ type: 'sine', f: 200, f2: 90, t: .14, dur: .12, vol: .25 }); },
+    roar: () => { vibTone({ f: 180, f2: 120, dur: 1, vol: .3, vib: 20, vibRate: 12, attack: .08, filter: { type: 'lowpass', f: 1400 } }); noise({ dur: 1, vol: .16, type: 'bandpass', f: 500, attack: .08 }); },
+    purr: () => vibTone({ f: 48, dur: 1.3, vol: .3, vib: 6, vibRate: 25, attack: .2, filter: { type: 'lowpass', f: 320 } }),
+    meow: () => { tone({ type: 'triangle', f: 620, f2: 950, dur: .22, vol: .2 }); tone({ type: 'triangle', f: 950, f2: 520, t: .2, dur: .32, vol: .2 }); },
+    snore: () => { noise({ dur: .9, vol: .22, f: 280, attack: .4 }); tone({ type: 'sine', f: 1100, f2: 1700, t: 1, dur: .5, vol: .1, attack: .1 }); },
+    monkey: () => [0, .18, .36, .6].forEach((t, i) => tone({ type: 'sine', f: i < 2 ? 520 : 700, f2: i < 2 ? 900 : 1300, t, dur: .15, vol: .24 })),
+    bonk: () => { bell(880, 0, .22); tone({ type: 'triangle', f: 210, f2: 520, t: .05, dur: .3, vol: .22, vib: 30, vibRate: 22 }); },
+    whistleUp: () => tone({ type: 'sine', f: 450, f2: 2100, dur: .7, vol: .2, vib: 8, vibRate: 7 }),
+    whistleDown: () => tone({ type: 'sine', f: 2100, f2: 300, dur: 1, vol: .2, vib: 8, vibRate: 7 }),
+    alarm: () => [0, .26, .52].forEach(t => tone({ type: 'square', f: 3000, t, dur: .14, vol: .06, attack: .002 })),
+    spit: () => { noise({ dur: .25, vol: .3, type: 'highpass', f: 1500 }); vibTone({ f: 90, dur: .45, vol: .22, t: .05, vib: 20, vibRate: 40 }); },
+    wahwah: () => [392, 370, 349].forEach((f, i) => tone({ type: 'triangle', f, t: i * .32, dur: i === 2 ? .9 : .3, vol: .2, vib: i === 2 ? 9 : 0, vibRate: 6 })),
+    scurry: () => { for (let i = 0; i < 16; i++) tone({ type: 'triangle', f: rnd(700, 1100), t: i * .06, dur: .03, vol: .09 }); },
+    peep: () => [0, .14, .3, .42, .6].forEach(t => tone({ type: 'sine', f: rnd(2600, 3000), f2: 3400, t, dur: .07, vol: .12 })),
+    tiptoe: () => [523, 392, 523, 392, 587, 392].forEach((f, i) => tone({ type: 'triangle', f, t: i * .2, dur: .12, vol: .16 })),
+    squeak: () => { tone({ type: 'sine', f: 1400, f2: 2000, dur: .08, vol: .18 }); tone({ type: 'sine', f: 2000, f2: 1400, t: .08, dur: .08, vol: .18 }); },
+    wipe: () => { noise({ dur: .28, vol: .1, type: 'bandpass', f: 2200, f2: 4200, q: 2 }); tone({ type: 'sine', f: 2400, f2: 2800, t: .1, dur: .12, vol: .05 }); },
+    sneezeBig: () => { tone({ type: 'triangle', f: 240, f2: 700, dur: .6, vol: .18, attack: .4 }); noise({ t: .62, dur: .4, vol: .5, type: 'highpass', f: 1500 }); },
+    zoom: () => { noise({ dur: .5, vol: .2, type: 'bandpass', f: 400, f2: 3200, q: 1.5 }); tone({ type: 'sine', f: 300, f2: 1400, dur: .45, vol: .14 }); },
+    boingBig: () => tone({ type: 'triangle', f: 140, f2: 620, dur: .5, vol: .26, vib: 40, vibRate: 18 }),
+    kiss: () => { tone({ type: 'sine', f: 1300, f2: 600, dur: .1, vol: .22 }); noise({ t: .08, dur: .04, vol: .15, type: 'highpass', f: 3000 }); },
+  };
+
+  // --- recorded clips for the silly sounds ---
+  let clipList = null;         // name -> file (sfx/manifest.json)
+  const clipRaw = new Map();   // name -> Promise<ArrayBuffer>
+  const clipBuf = new Map();   // name -> AudioBuffer
+  function fetchClip(name) {
+    if (!clipRaw.has(name)) {
+      const p = fetch('sfx/' + clipList[name]).then(r => { if (!r.ok) throw new Error('sfx HTTP ' + r.status); return r.arrayBuffer(); });
+      p.catch(() => clipRaw.delete(name));
+      clipRaw.set(name, p);
+    }
+    return clipRaw.get(name);
+  }
+  async function decodeClip(name) {
+    if (clipBuf.has(name) || !clipList || !clipList[name] || !ensure()) return;
+    const ab = await fetchClip(name);
+    const b = await new Promise((res, rej) => {
+      const p = ctx.decodeAudioData(ab.slice(0), res, rej);
+      if (p && p.then) p.then(res, rej);
+    });
+    clipBuf.set(name, b);
+  }
+  function playClip(name, { rate = 1, vol = 1, t = 0 } = {}) {
+    const b = clipBuf.get(name);
+    const src = ctx.createBufferSource();
+    src.buffer = b;
+    src.playbackRate.value = rate;
+    const g = ctx.createGain();
+    g.gain.value = vol;
+    src.connect(g);
+    g.connect(sfxBus);
+    src.start(ctx.currentTime + t);
+    return b.duration / rate;
+  }
+
   // --- background chimes ---
   const midi = m => 440 * Math.pow(2, (m - 69) / 12);
   const STEP = 60 / 88 / 2; // eighth notes at 88 bpm
@@ -175,6 +247,35 @@ export const Sound = (() => {
   return {
     ensure,
     setSfx(on) { sfxOn = on; },
+    // A silly sound by name: the recorded clip if it's ready, otherwise the stand-in.
+    //   rate  speeds up / pitches up the clip (only the recorded one)
+    //   t     seconds from now
+    silly(name, opts = {}) {
+      if (!sfxOn || !ensure()) return;
+      try {
+        if (clipBuf.has(name)) { playClip(name, opts); return; }
+        if (clipList && clipList[name]) decodeClip(name).catch(() => {});
+        if (SYNTH[name]) {
+          if (opts.t) setTimeout(() => play(SYNTH[name]), opts.t * 1000);
+          else SYNTH[name]();
+        }
+      } catch (e) { console.warn('[CookieLab] sound error', e); }
+    },
+    sillyNames: () => Object.keys(SYNTH),
+    async loadClips() {
+      try {
+        const r = await fetch('sfx/manifest.json', { cache: 'no-cache' });
+        if (r.ok) {
+          const m = await r.json();
+          if (m && m.sounds && typeof m.sounds === 'object') clipList = m.sounds;
+        }
+      } catch (e) { /* no recorded sounds yet: the stand-ins play */ }
+    },
+    // Fetch and unpack every clip once (they are small), after the first tap.
+    async preloadClips() {
+      if (!clipList || !ensure()) return;
+      for (const name of Object.keys(clipList)) await decodeClip(name).catch(() => {});
+    },
     // Output for recorded voice clips (independent of the sound-effects switch).
     voiceDest() {
       if (!ensure()) return null;

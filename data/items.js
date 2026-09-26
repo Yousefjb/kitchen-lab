@@ -8,6 +8,8 @@
 //   alt    optional backup emoji for devices that can't show the first one
 //   color  the colour the bowl turns when this item is in it
 //   desc   one or two short sentences (spoken aloud)
+//   voice  optional: making it changes the mascot's voice for a few lines
+//          (squeaky | deep | wobbly). Wacky dishes without one get a random voice.
 //
 // A kitchen can change the wording of an item for itself; see `overrides` there.
 
@@ -36,7 +38,7 @@ export const ITEMS = {
   salad:       { name: 'سلطة طماطم', emoji: '🥗', color: '#7fc96b', desc: 'طماطم طازجة مع قطرات من الزيت. منعشة!' },
   greasefire:  { name: 'حريق الزيت', emoji: '🚒', color: '#ff4d2e', desc: 'سخن الزيت أكثر من اللازم! نطبخ دائمًا مع شخص كبير.' },
   splatter:    { name: 'رذاذ الزيت', emoji: '🫧', alt: '💦', color: '#d8f0ff', desc: 'الزيت والماء لا يحبّان بعضهما! رذاذ في كل مكان.' },
-  chick:       { name: 'كتكوت مفاجئ', emoji: '🐣', color: '#ffe34d', desc: 'دفّأنا البيضة... ففقست كتكوتًا! مرحبًا يا صغير.' },
+  chick:       { name: 'كتكوت مفاجئ', emoji: '🐣', color: '#ffe34d', desc: 'دفّأنا البيضة... ففقست كتكوتًا! مرحبًا يا صغير.', voice: 'squeaky' },
   flourcloud:  { name: 'غيمة طحين', emoji: '🌪️', color: '#f1ede4', desc: 'صار كل شيء أبيض! حتى القطّة!' },
 
   // Dishes and meals
@@ -53,13 +55,13 @@ export const ITEMS = {
   gratin:      { name: 'بطاطس بالجبن', emoji: '🥘', color: '#e8b04f', desc: 'بطاطس مشوية تحت بطّانية من الجبن الذهبي.' },
   soggyfries:  { name: 'بطاطس مبلّلة', emoji: '🫠', alt: '🤢', color: '#d9c27a', desc: 'غسلت البطاطس المقلية؟! صارت طريّة ومبلّلة. يَع!' },
   kaboom:      { name: 'انفجار المطبخ', emoji: '💥', color: '#ff7a2e', desc: 'لا نسكب الماء على زيت مشتعل أبدًا! الكبار يغطّونه بغطاء.' },
-  mouse:       { name: 'حفلة الفأر', emoji: '🐭', color: '#cfc7c0', desc: 'رائحة الجبن جاءت بضيف صغير سعيد!' },
+  mouse:       { name: 'حفلة الفأر', emoji: '🐭', color: '#cfc7c0', desc: 'رائحة الجبن جاءت بضيف صغير سعيد!', voice: 'squeaky' },
   sandwich:    { name: 'شطيرة جبن', emoji: '🥪', color: '#f1c16a', desc: 'خبز وجبن وخبز. بسيطة ولذيذة!' },
   spaghetti:   { name: 'سباغيتي', emoji: '🍝', color: '#e8573c', desc: 'معكرونة ملفوفة بالصلصة الحمراء. لا تنسَ المنديل!' },
   lunchbox:    { name: 'علبة الغداء', emoji: '🍱', color: '#8fcf8a', desc: 'شطيرة وبطاطس... غداء المدرسة جاهز!' },
-  pizzatower:  { name: 'برج البيتزا المائل', emoji: '🗼', color: '#ff9b5a', desc: 'كدّسنا البيتزا حتى مال البرج!' },
+  pizzatower:  { name: 'برج البيتزا المائل', emoji: '🗼', color: '#ff9b5a', desc: 'كدّسنا البيتزا حتى مال البرج!', voice: 'wobbly' },
   burnttoast:  { name: 'خبز محروق', emoji: '🌑', color: '#3d3d3d', desc: 'صار الخبز أسود كالفحم! جرس الإنذار يصفّق.' },
-  frisbee:     { name: 'بان كيك طائر', emoji: '🥏', alt: '🛸', color: '#d9c27a', desc: 'طبخناه أكثر من اللازم فصار قرصًا طائرًا!' },
+  frisbee:     { name: 'بان كيك طائر', emoji: '🥏', alt: '🛸', color: '#d9c27a', desc: 'طبخناه أكثر من اللازم فصار قرصًا طائرًا!', voice: 'wobbly' },
   trophy:      { name: 'كأس الطاهي الذهبي', emoji: '🏆', color: '#ffcf3f', desc: 'سباغيتي وبيتزا معًا؟ أنت الآن كبير الطهاة!' },
 
   // Sweets and baking
@@ -68,7 +70,7 @@ export const ITEMS = {
   hotmilk:     { name: 'حليب ساخن', emoji: '☕', color: '#fff0dd', desc: 'حليب دافئ لما قبل النوم.' },
   sweetmilk:   { name: 'حليب محلّى', emoji: '🍼', color: '#fff1f6', desc: 'حليب مع سكّر. يحبّه الصغار!' },
   ash:         { name: 'رماد محروق', emoji: '🌑', color: '#6b6b6b', desc: 'احترق الطحين! رائحته... ليست جميلة.' },
-  sugarrush:   { name: 'نشاط السكّر', emoji: '⚡', color: '#ffe34d', desc: 'أكلت سكّرًا كثيرًا! صرت تقفز في كل مكان!' },
+  sugarrush:   { name: 'نشاط السكّر', emoji: '⚡', color: '#ffe34d', desc: 'أكلت سكّرًا كثيرًا! صرت تقفز في كل مكان!', voice: 'squeaky' },
   fire:        { name: 'حريق المطبخ', emoji: '🚒', color: '#ff4d2e', desc: 'نار ونار؟ نادوا رجال الإطفاء!' },
   sweetsand:   { name: 'رمل حلو', emoji: '🏖️', color: '#f0d9a0', desc: 'يشبه رمل الشاطئ... لكنّه حلو جدًّا!' },
   cookiedough: { name: 'عجينة الكوكيز', emoji: '🥮', color: '#d9a66b', desc: 'من المفروض أن نخبزها أولًا!' },
@@ -92,8 +94,8 @@ export const ITEMS = {
   bdaycake:    { name: 'كعكة عيد الميلاد', emoji: '🎂', color: '#ffb3d1', desc: 'أُضيئت الشموع وحدها! عيد ميلاد سعيد!' },
   soggy:       { name: 'كوكيز مبلّلة', emoji: '🥴', color: '#b89a74', desc: 'غمسناها في الحليب طويلًا... فذابت!' },
   charcoal:    { name: 'كوكيز الفحم', emoji: '🪨', alt: '⚫', color: '#3d3d3d', desc: 'خبزناها مرّتين! صارت مثل الحجر.' },
-  volcano:     { name: 'بركان الكعك', emoji: '🌋', color: '#ff5a2e', desc: 'الكعكة تقذف الكريمة! اهربوا!' },
-  monster:     { name: 'وحش الكعك اللزج', emoji: '👾', color: '#8fd46b', desc: 'لقد تحرّك! إنّه يريد اسمًا.' },
-  hypercookie: { name: 'كوكيز صاروخ', emoji: '🚀', color: '#7cc4ff', desc: 'كوكيز فيها سكّر كثير... طارت إلى الفضاء!' },
+  volcano:     { name: 'بركان الكعك', emoji: '🌋', color: '#ff5a2e', desc: 'الكعكة تقذف الكريمة! اهربوا!', voice: 'deep' },
+  monster:     { name: 'وحش الكعك اللزج', emoji: '👾', color: '#8fd46b', desc: 'لقد تحرّك! إنّه يريد اسمًا.', voice: 'deep' },
+  hypercookie: { name: 'كوكيز صاروخ', emoji: '🚀', color: '#7cc4ff', desc: 'كوكيز فيها سكّر كثير... طارت إلى الفضاء!', voice: 'squeaky' },
   cookiecrown: { name: 'تاج الكوكيز', emoji: '👑', color: '#ffcf3f', desc: 'أعظم إنجاز! أنت الآن ملك الخبّازين!' },
 };

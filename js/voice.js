@@ -2,7 +2,7 @@
 // built-in Arabic speech engine as a fallback for lines without a clip.
 import { wait } from './util.js';
 import { Sound } from './sound.js';
-import { speakable } from './voice-lines.js';
+import { speakable, plainSpeech } from './voice-lines.js';
 
 /* =====================================================================
    Voice — Arabic narration with the device's built-in speech engine
@@ -147,7 +147,14 @@ export const Clips = (() => {
 /* =====================================================================
    Narrator — plays a sentence made of clip pieces, one sentence at a time.
    Falls back to the device's built-in voice when a piece has no clip.
+   A sentence can be said in a funny voice (fx): squeaky, deep or wobbly.
    ===================================================================== */
+const VOICE_FX = {
+  squeaky: { rate: 1.45, pitch: 1.9, speed: 1.15 },
+  deep: { rate: .72, pitch: .2, speed: .85 },
+  wobbly: { rate: .92, pitch: .8, speed: .9, wobble: .13 },
+};
+
 export const Narrator = (() => {
   let queue = [];
   let active = null;
@@ -186,15 +193,31 @@ export const Narrator = (() => {
         if (g !== gen || !active || active.job !== job) return; // interrupted while loading
         if (ctx.state === 'suspended') await ctx.resume().catch(() => {});
         const dest = Sound.voiceDest();
+        const fx = VOICE_FX[job.fx];
+        const rate = fx ? fx.rate : 1;
         let t = ctx.currentTime + .03;
+        let lfo = null;
+        if (fx && fx.wobble) {
+          lfo = ctx.createOscillator();
+          lfo.frequency.value = 4.5;
+          const depth = ctx.createGain();
+          depth.gain.value = fx.wobble;
+          lfo.connect(depth);
+          lfo.depth = depth;
+          lfo.start();
+          active.sources.push(lfo);
+        }
         bufs.forEach((b, i) => {
           const src = ctx.createBufferSource();
           src.buffer = b;
+          src.playbackRate.value = rate;
+          if (lfo) lfo.depth.connect(src.playbackRate);
           src.connect(dest);
           src.start(t);
           active.sources.push(src);
-          t += b.duration + (i < bufs.length - 1 ? .1 : 0);
+          t += b.duration / rate + (i < bufs.length - 1 ? .1 : 0);
         });
+        if (lfo) lfo.stop(t + .1);
         Sound.duck(true);
         if (job.onstart) job.onstart();
         active.timer = setTimeout(() => done(job), (t - ctx.currentTime) * 1000 + 60);
@@ -205,7 +228,10 @@ export const Narrator = (() => {
       }
     }
     Sound.duck(true);
-    Voice.speak(job.parts.join(' '), { interrupt: false, force: job.force, onstart: job.onstart, onend: () => done(job) });
+    const fx = VOICE_FX[job.fx] || { pitch: 1, speed: 1 };
+    Voice.speak(job.parts.map(plainSpeech).join(' '), {
+      interrupt: false, force: job.force, pitch: fx.pitch, rate: .95 * fx.speed, onstart: job.onstart, onend: () => done(job),
+    });
   }
 
   return {
@@ -229,9 +255,9 @@ export const Narrator = (() => {
       Voice.stop();
       Sound.duck(false);
     },
-    speak(parts, { interrupt = true, force = false, onstart, onend } = {}) {
+    speak(parts, { interrupt = true, force = false, fx = null, onstart, onend } = {}) {
       const list = (Array.isArray(parts) ? parts : [parts]).map(speakable).filter(Boolean);
-      const job = { parts: list, force, onstart, onend };
+      const job = { parts: list, force, fx, onstart, onend };
       if (!list.length || (!enabled && !force)) { finish(job); return; }
       if (interrupt) this.stop();
       queue.push(job);
